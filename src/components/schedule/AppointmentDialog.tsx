@@ -192,11 +192,8 @@ export const AppointmentDialog = ({
           const existingEnd = existing.end_time;
 
           // Verificar sobreposição de horários
-          if (
-            (newStart >= existingStart && newStart < existingEnd) || // Novo começa durante existente
-            (newEnd > existingStart && newEnd <= existingEnd) || // Novo termina durante existente
-            (newStart <= existingStart && newEnd >= existingEnd) // Novo engloba existente
-          ) {
+          // Permite agendamento se começar exatamente no horário de término do anterior
+          if (newStart < existingEnd && newEnd > existingStart) {
             throw new Error(
               `Já existe uma consulta agendada entre ${existingStart.slice(0, 5)} e ${existingEnd.slice(0, 5)} neste horário.`
             );
