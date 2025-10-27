@@ -4,6 +4,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInte
 import { ptBR } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
 import { Clock } from "lucide-react";
+import { getStatusColor } from "@/lib/appointmentUtils";
 
 interface ScheduleCalendarProps {
   viewMode: "day" | "week" | "month";
@@ -100,10 +101,10 @@ export const ScheduleCalendar = ({
                     <div
                       key={apt.id}
                       onClick={() => onAppointmentClick(apt)}
-                      className="text-xs p-1 bg-accent/20 rounded cursor-pointer hover:bg-accent/30 transition-colors"
+                      className={`text-xs p-1 ${getStatusColor(apt.status)} text-white rounded cursor-pointer hover:opacity-80 transition-opacity`}
                     >
                       <div className="font-medium truncate">{apt.patient?.name}</div>
-                      <div className="text-muted-foreground">{apt.start_time.slice(0, 5)}</div>
+                      <div className="opacity-90">{apt.start_time.slice(0, 5)}</div>
                     </div>
                   ))}
                   {dayAppointments.length > 3 && (
@@ -155,7 +156,7 @@ export const ScheduleCalendar = ({
                       <div
                         key={apt.id}
                         onClick={() => onAppointmentClick(apt)}
-                        className="absolute inset-x-1 bg-accent/80 rounded p-1 cursor-pointer hover:bg-accent transition-colors border border-accent m-0.5"
+                        className={`absolute inset-x-1 ${getStatusColor(apt.status)} rounded p-1 cursor-pointer hover:opacity-90 transition-opacity border border-white/20 m-0.5`}
                         style={{
                           top: `${idx * 30}px`,
                           height: "28px",

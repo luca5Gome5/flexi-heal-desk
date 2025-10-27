@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { getStatusLabel, getStatusColor, getStatusTextColor } from "@/lib/appointmentUtils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -157,7 +158,12 @@ export const AppointmentDetails = ({
             <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground">Status</p>
-                <p className="font-semibold capitalize">{appointment.status}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`w-3 h-3 rounded-full ${getStatusColor(appointment.status)}`} />
+                  <p className={`font-semibold ${getStatusTextColor(appointment.status)}`}>
+                    {getStatusLabel(appointment.status)}
+                  </p>
+                </div>
               </div>
             </div>
 
