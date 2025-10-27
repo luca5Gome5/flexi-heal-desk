@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -49,6 +50,7 @@ export function DoctorForm({ open, onOpenChange, doctor }: DoctorFormProps) {
     default_unit_id: "",
     status: true,
   });
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
 
   // Fetch units for the select
   const { data: units } = useQuery({
@@ -63,6 +65,22 @@ export function DoctorForm({ open, onOpenChange, doctor }: DoctorFormProps) {
       if (error) throw error;
       return data || [];
     },
+  });
+
+  // Fetch doctor units if editing
+  const { data: doctorUnits } = useQuery({
+    queryKey: ["doctor-units", doctor?.id],
+    queryFn: async () => {
+      if (!doctor?.id) return [];
+      const { data, error } = await supabase
+        .from("doctor_units")
+        .select("unit_id")
+        .eq("doctor_id", doctor.id);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!doctor?.id && open,
   });
 
   // Update form data when doctor prop changes
@@ -88,8 +106,16 @@ export function DoctorForm({ open, onOpenChange, doctor }: DoctorFormProps) {
         default_unit_id: "",
         status: true,
       });
+      setSelectedUnits([]);
     }
   }, [doctor, open]);
+
+  // Update selected units when doctor units are loaded
+  useEffect(() => {
+    if (doctorUnits) {
+      setSelectedUnits(doctorUnits.map((du) => du.unit_id));
+    }
+  }, [doctorUnits]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,6 +127,8 @@ export function DoctorForm({ open, onOpenChange, doctor }: DoctorFormProps) {
         default_unit_id: formData.default_unit_id || null,
       };
 
+      let doctorId = doctor?.id;
+
       if (doctor?.id) {
         // Update existing doctor
         const { error } = await supabase
@@ -109,22 +137,53 @@ export function DoctorForm({ open, onOpenChange, doctor }: DoctorFormProps) {
           .eq("id", doctor.id);
 
         if (error) throw error;
-        toast.success("Médico atualizado com sucesso!");
       } else {
         // Create new doctor
-        const { error } = await supabase.from("doctors").insert([dataToSave]);
+        const { data: newDoctor, error } = await supabase
+          .from("doctors")
+          .insert([dataToSave])
+          .select()
+          .single();
 
         if (error) throw error;
-        toast.success("Médico cadastrado com sucesso!");
+        doctorId = newDoctor.id;
       }
 
+      // Update doctor-units relationship
+      if (doctorId) {
+        // Delete existing relationships
+        await supabase.from("doctor_units").delete().eq("doctor_id", doctorId);
+
+        // Insert new relationships
+        if (selectedUnits.length > 0) {
+          const doctorUnitsData = selectedUnits.map((unitId) => ({
+            doctor_id: doctorId,
+            unit_id: unitId,
+          }));
+
+          const { error: unitsError } = await supabase
+            .from("doctor_units")
+            .insert(doctorUnitsData);
+
+          if (unitsError) throw unitsError;
+        }
+      }
+
+      toast.success(doctor ? "Médico atualizado com sucesso!" : "Médico cadastrado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["doctors"] });
+      queryClient.invalidateQueries({ queryKey: ["doctor-units"] });
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || "Erro ao salvar médico");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUnitToggle = (unitId: string) => {
+    setSelectedUnits((prev) =>
+      prev.includes(unitId) ? prev.filter((id) => id !== unitId) : [...prev, unitId]
+    );
   };
 
   return (
@@ -168,43 +227,77 @@ export function DoctorForm({ open, onOpenChange, doctor }: DoctorFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="professional_id">Registro Profissional *</Label>
-              <Input
-                id="professional_id"
-                required
-                value={formData.professional_id}
-                onChange={(e) => setFormData({ ...formData, professional_id: e.target.value })}
-                placeholder="Ex: CRM 12345"
-                className="rounded-lg border-border focus-visible:ring-accent"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="professional_id">Registro Profissional *</Label>
+            <Input
+              id="professional_id"
+              required
+              value={formData.professional_id}
+              onChange={(e) => setFormData({ ...formData, professional_id: e.target.value })}
+              placeholder="Ex: CRM 12345"
+              className="rounded-lg border-border focus-visible:ring-accent"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="default_unit">Unidade Padrão</Label>
-              <Select
-                value={formData.default_unit_id}
-                onValueChange={(value) => setFormData({ ...formData, default_unit_id: value })}
-              >
-                <SelectTrigger className="rounded-lg border-border focus:ring-accent">
-                  <SelectValue placeholder="Selecione uma unidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {units && units.length > 0 ? (
-                    units.map((unit) => (
+          <div className="space-y-3">
+            <Label>Unidades de Atendimento *</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 rounded-lg border border-border bg-secondary/30 max-h-[200px] overflow-y-auto">
+              {units && units.length > 0 ? (
+                units.map((unit) => (
+                  <div key={unit.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`unit-${unit.id}`}
+                      checked={selectedUnits.includes(unit.id)}
+                      onCheckedChange={() => handleUnitToggle(unit.id)}
+                      className="border-accent data-[state=checked]:bg-accent data-[state=checked]:border-accent"
+                    />
+                    <Label
+                      htmlFor={`unit-${unit.id}`}
+                      className="text-sm font-normal cursor-pointer flex-1"
+                    >
+                      {unit.name}
+                    </Label>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-sm text-muted-foreground text-center py-2">
+                  Nenhuma unidade cadastrada
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Selecione todas as unidades onde o médico atende
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="default_unit">Unidade Padrão</Label>
+            <Select
+              value={formData.default_unit_id}
+              onValueChange={(value) => setFormData({ ...formData, default_unit_id: value })}
+            >
+              <SelectTrigger className="rounded-lg border-border focus:ring-accent">
+                <SelectValue placeholder="Selecione a unidade principal" />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedUnits.length > 0 ? (
+                  units
+                    ?.filter((unit) => selectedUnits.includes(unit.id))
+                    .map((unit) => (
                       <SelectItem key={unit.id} value={unit.id}>
                         {unit.name}
                       </SelectItem>
                     ))
-                  ) : (
-                    <div className="p-2 text-sm text-muted-foreground">
-                      Nenhuma unidade cadastrada
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+                ) : (
+                  <div className="p-2 text-sm text-muted-foreground">
+                    Selecione as unidades primeiro
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Unidade principal de atendimento (deve estar selecionada acima)
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

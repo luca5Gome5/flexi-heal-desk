@@ -29,16 +29,17 @@ export default function Doctors() {
   const { data: doctors, isLoading } = useQuery({
     queryKey: ["doctors"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: doctorsData, error } = await supabase
         .from("doctors")
         .select(`
           *,
-          unit:units(name)
+          unit:units(name),
+          doctor_units(unit:units(id, name))
         `)
         .order("name", { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      return doctorsData || [];
     },
   });
 
@@ -153,10 +154,28 @@ export default function Doctors() {
                   </div>
 
                   <div className="space-y-2">
-                    {doctor.unit && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Building2 className="h-4 w-4" />
-                        <span>{doctor.unit.name}</span>
+                    {doctor.doctor_units && doctor.doctor_units.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-start gap-2 text-sm">
+                          <Building2 className="h-4 w-4 mt-0.5 text-accent flex-shrink-0" />
+                          <div className="flex-1">
+                            <div className="flex flex-wrap gap-1">
+                              {doctor.doctor_units.map((du: any, index: number) => (
+                                <span
+                                  key={du.unit.id}
+                                  className={`inline-block px-2 py-0.5 text-xs rounded-full ${
+                                    doctor.default_unit_id === du.unit.id
+                                      ? "bg-accent/20 text-accent font-medium"
+                                      : "bg-secondary text-muted-foreground"
+                                  }`}
+                                >
+                                  {du.unit.name}
+                                  {doctor.default_unit_id === du.unit.id && " ★"}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 

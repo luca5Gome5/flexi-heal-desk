@@ -91,6 +91,42 @@ export type Database = {
           },
         ]
       }
+      doctor_units: {
+        Row: {
+          created_at: string | null
+          doctor_id: string
+          id: string
+          unit_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          doctor_id: string
+          id?: string
+          unit_id: string
+        }
+        Update: {
+          created_at?: string | null
+          doctor_id?: string
+          id?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_units_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doctor_units_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doctors: {
         Row: {
           created_at: string | null
