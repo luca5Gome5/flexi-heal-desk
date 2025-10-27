@@ -32,16 +32,6 @@ interface ProcedureFormProps {
   } | null;
 }
 
-const DAYS_OF_WEEK = [
-  { value: "monday", label: "Segunda" },
-  { value: "tuesday", label: "Terça" },
-  { value: "wednesday", label: "Quarta" },
-  { value: "thursday", label: "Quinta" },
-  { value: "friday", label: "Sexta" },
-  { value: "saturday", label: "Sábado" },
-  { value: "sunday", label: "Domingo" },
-];
-
 export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormProps) {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -53,40 +43,6 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
   });
   const [requiredExams, setRequiredExams] = useState<string[]>([]);
   const [newExam, setNewExam] = useState("");
-  const [availability, setAvailability] = useState<
-    Record<string, { days: string[]; start_time: string; end_time: string }>
-  >({});
-
-  // Fetch units
-  const { data: units } = useQuery({
-    queryKey: ["units"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("units")
-        .select("id, name")
-        .eq("status", true)
-        .order("name", { ascending: true });
-
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  // Fetch procedure availability if editing
-  const { data: procedureAvailability } = useQuery({
-    queryKey: ["procedure-availability", procedure?.id],
-    queryFn: async () => {
-      if (!procedure?.id) return [];
-      const { data, error } = await supabase
-        .from("procedure_availability")
-        .select("*, unit:units(name)")
-        .eq("procedure_id", procedure.id);
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!procedure?.id && open,
-  });
 
   // Update form data when procedure prop changes
   useEffect(() => {
@@ -106,29 +62,8 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         status: true,
       });
       setRequiredExams([]);
-      setAvailability({});
     }
   }, [procedure, open]);
-
-  // Group availability by unit when loaded
-  useEffect(() => {
-    if (procedureAvailability && procedureAvailability.length > 0) {
-      const grouped: Record<string, { days: string[]; start_time: string; end_time: string }> = {};
-      
-      procedureAvailability.forEach((av: any) => {
-        if (!grouped[av.unit_id]) {
-          grouped[av.unit_id] = {
-            days: [],
-            start_time: av.start_time,
-            end_time: av.end_time,
-          };
-        }
-        grouped[av.unit_id].days.push(av.day_of_week);
-      });
-
-      setAvailability(grouped);
-    }
-  }, [procedureAvailability]);
 
   const handleAddExam = () => {
     if (newExam.trim() && !requiredExams.includes(newExam.trim())) {
@@ -141,24 +76,6 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
     setRequiredExams(requiredExams.filter((e) => e !== exam));
   };
 
-  const handleDayToggle = (unitId: string, day: string) => {
-    setAvailability((prev) => {
-      const unitAvail = prev[unitId] || { days: [], start_time: "08:00", end_time: "18:00" };
-      const days = unitAvail.days.includes(day)
-        ? unitAvail.days.filter((d) => d !== day)
-        : [...unitAvail.days, day];
-
-      return { ...prev, [unitId]: { ...unitAvail, days } };
-    });
-  };
-
-  const handleTimeChange = (unitId: string, field: "start_time" | "end_time", value: string) => {
-    setAvailability((prev) => {
-      const unitAvail = prev[unitId] || { days: [], start_time: "08:00", end_time: "18:00" };
-      return { ...prev, [unitId]: { ...unitAvail, [field]: value } };
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -169,8 +86,6 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         required_exams: requiredExams.length > 0 ? requiredExams : null,
       };
 
-      let procedureId = procedure?.id;
-
       if (procedure?.id) {
         const { error } = await supabase
           .from("procedures")
@@ -179,47 +94,17 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
 
         if (error) throw error;
       } else {
-        const { data: newProcedure, error } = await supabase
+        const { error } = await supabase
           .from("procedures")
-          .insert([dataToSave])
-          .select()
-          .single();
+          .insert([dataToSave]);
 
         if (error) throw error;
-        procedureId = newProcedure.id;
-      }
-
-      // Update procedure availability
-      if (procedureId) {
-        await supabase.from("procedure_availability").delete().eq("procedure_id", procedureId);
-
-        const availabilityData: any[] = [];
-        Object.entries(availability).forEach(([unitId, config]) => {
-          config.days.forEach((day) => {
-            availabilityData.push({
-              procedure_id: procedureId,
-              unit_id: unitId,
-              day_of_week: day,
-              start_time: config.start_time,
-              end_time: config.end_time,
-            });
-          });
-        });
-
-        if (availabilityData.length > 0) {
-          const { error: availError } = await supabase
-            .from("procedure_availability")
-            .insert(availabilityData);
-
-          if (availError) throw availError;
-        }
       }
 
       toast.success(
         procedure ? "Procedimento atualizado com sucesso!" : "Procedimento cadastrado com sucesso!"
       );
       queryClient.invalidateQueries({ queryKey: ["procedures"] });
-      queryClient.invalidateQueries({ queryKey: ["procedure-availability"] });
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || "Erro ao salvar procedimento");
@@ -319,71 +204,6 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="space-y-3">
-            <Label>Regras de Agendamento por Unidade</Label>
-            <p className="text-xs text-muted-foreground">
-              Defina em quais dias e horários este procedimento pode ser agendado em cada unidade
-            </p>
-            <div className="space-y-4">
-              {units && units.length > 0 ? (
-                units.map((unit) => (
-                  <div
-                    key={unit.id}
-                    className="p-4 rounded-lg border border-border bg-card space-y-3"
-                  >
-                    <h4 className="font-medium text-foreground">{unit.name}</h4>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {DAYS_OF_WEEK.map((day) => (
-                        <div key={day.value} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`${unit.id}-${day.value}`}
-                            checked={availability[unit.id]?.days.includes(day.value)}
-                            onCheckedChange={() => handleDayToggle(unit.id, day.value)}
-                            className="border-accent data-[state=checked]:bg-accent"
-                          />
-                          <Label
-                            htmlFor={`${unit.id}-${day.value}`}
-                            className="text-sm cursor-pointer"
-                          >
-                            {day.label}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-
-                    {availability[unit.id]?.days.length > 0 && (
-                      <div className="grid grid-cols-2 gap-3 pt-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Horário Início</Label>
-                          <Input
-                            type="time"
-                            value={availability[unit.id]?.start_time || "08:00"}
-                            onChange={(e) => handleTimeChange(unit.id, "start_time", e.target.value)}
-                            className="rounded-lg border-border focus-visible:ring-accent"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Horário Fim</Label>
-                          <Input
-                            type="time"
-                            value={availability[unit.id]?.end_time || "18:00"}
-                            onChange={(e) => handleTimeChange(unit.id, "end_time", e.target.value)}
-                            className="rounded-lg border-border focus-visible:ring-accent"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhuma unidade cadastrada
-                </p>
-              )}
-            </div>
           </div>
 
           <div className="flex items-center space-x-2">
