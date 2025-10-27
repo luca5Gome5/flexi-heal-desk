@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -35,15 +35,43 @@ export function UnitForm({ open, onOpenChange, unit }: UnitFormProps) {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: unit?.name || "",
-    address: unit?.address || "",
-    city: unit?.city || "",
-    state: unit?.state || "",
-    zip_code: unit?.zip_code || "",
-    phone: unit?.phone || "",
-    cnpj: unit?.cnpj || "",
-    status: unit?.status ?? true,
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    zip_code: "",
+    phone: "",
+    cnpj: "",
+    status: true,
   });
+
+  // Update form data when unit prop changes
+  useEffect(() => {
+    if (unit) {
+      setFormData({
+        name: unit.name || "",
+        address: unit.address || "",
+        city: unit.city || "",
+        state: unit.state || "",
+        zip_code: unit.zip_code || "",
+        phone: unit.phone || "",
+        cnpj: unit.cnpj || "",
+        status: unit.status ?? true,
+      });
+    } else {
+      // Reset form for new unit
+      setFormData({
+        name: "",
+        address: "",
+        city: "",
+        state: "",
+        zip_code: "",
+        phone: "",
+        cnpj: "",
+        status: true,
+      });
+    }
+  }, [unit, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
