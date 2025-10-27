@@ -26,6 +26,7 @@ import { Card } from "@/components/ui/card";
 import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 
 type DayOfWeek = "segunda-feira" | "terça-feira" | "quarta-feira" | "quinta-feira" | "sexta-feira" | "sábado" | "domingo";
+type DbDayOfWeek = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 
 const daysOfWeek: DayOfWeek[] = [
   "segunda-feira",
@@ -36,6 +37,26 @@ const daysOfWeek: DayOfWeek[] = [
   "sábado",
   "domingo"
 ];
+
+const dayOfWeekMapping: Record<DayOfWeek, DbDayOfWeek> = {
+  "segunda-feira": "monday",
+  "terça-feira": "tuesday",
+  "quarta-feira": "wednesday",
+  "quinta-feira": "thursday",
+  "sexta-feira": "friday",
+  "sábado": "saturday",
+  "domingo": "sunday"
+};
+
+const dbToDayOfWeek: Record<DbDayOfWeek, DayOfWeek> = {
+  "monday": "segunda-feira",
+  "tuesday": "terça-feira",
+  "wednesday": "quarta-feira",
+  "thursday": "quinta-feira",
+  "friday": "sexta-feira",
+  "saturday": "sábado",
+  "sunday": "domingo"
+};
 
 interface TimeSlot {
   startTime: string;
@@ -115,10 +136,11 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
       const promises = attendanceDates.map((date) => {
         const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
         const timeSlot = weekSchedule[dayOfWeekKey];
+        const dbDayOfWeek = dayOfWeekMapping[dayOfWeekKey];
         
         return supabase.from("procedure_availability").insert({
           unit_id: selectedUnit,
-          day_of_week: dayOfWeekKey as any,
+          day_of_week: dbDayOfWeek,
           start_time: timeSlot.startTime,
           end_time: timeSlot.endTime,
           procedure_id: null,
@@ -417,25 +439,28 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
               </p>
             ) : availabilities && availabilities.length > 0 ? (
               <div className="space-y-2">
-                {availabilities.map((availability) => (
-                  <Card key={availability.id} className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium capitalize">{availability.day_of_week}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {availability.start_time} - {availability.end_time}
-                        </p>
+                {availabilities.map((availability) => {
+                  const dayInPortuguese = dbToDayOfWeek[availability.day_of_week as DbDayOfWeek] || availability.day_of_week;
+                  return (
+                    <Card key={availability.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium capitalize">{dayInPortuguese}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {availability.start_time} - {availability.end_time}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteMutation.mutate(availability.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteMutation.mutate(availability.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
