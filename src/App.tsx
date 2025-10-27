@@ -14,6 +14,7 @@ import Doctors from "./pages/Doctors";
 import Procedures from "./pages/Procedures";
 import Media from "./pages/Media";
 import Messages from "./pages/Messages";
+import Schedule from "./pages/Schedule";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,7 +37,7 @@ const App = () => (
                   <Route path="/units" element={<Units />} />
                   <Route path="/doctors" element={<Doctors />} />
                   <Route path="/procedures" element={<Procedures />} />
-                  <Route path="/calendar" element={<Dashboard />} />
+                  <Route path="/calendar" element={<Schedule />} />
                   <Route path="/media" element={<Media />} />
                   <Route path="/messages" element={<Messages />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
