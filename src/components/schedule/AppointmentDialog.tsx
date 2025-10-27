@@ -161,6 +161,9 @@ export const AppointmentDialog = ({
       // Converter strings vazias para null nos campos UUID
       const dataToSave = {
         ...values,
+        patient_id: values.patient_id || null,
+        doctor_id: values.doctor_id || null,
+        unit_id: values.unit_id || null,
         procedure_id: values.procedure_id || null,
       };
 
