@@ -9,6 +9,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import Dashboard from "./pages/Dashboard";
 import Patients from "./pages/Patients";
 import Units from "./pages/Units";
+import Doctors from "./pages/Doctors";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,8 +30,8 @@ const App = () => (
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/patients" element={<Patients />} />
                   <Route path="/units" element={<Units />} />
+                  <Route path="/doctors" element={<Doctors />} />
                   <Route path="/calendar" element={<Dashboard />} />
-                  <Route path="/doctors" element={<Dashboard />} />
                   <Route path="/procedures" element={<Dashboard />} />
                   <Route path="/media" element={<Dashboard />} />
                   <Route path="/messages" element={<Dashboard />} />
