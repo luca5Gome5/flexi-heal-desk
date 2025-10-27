@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Upload } from "lucide-react";
 
 interface MediaFormProps {
   open: boolean;
@@ -38,6 +39,8 @@ export function MediaForm({ open, onOpenChange, media }: MediaFormProps) {
     tags: "",
     procedure_id: "",
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: procedures } = useQuery({
     queryKey: ["procedures"],
@@ -73,13 +76,80 @@ export function MediaForm({ open, onOpenChange, media }: MediaFormProps) {
         procedure_id: "",
       });
     }
+    setSelectedFile(null);
   }, [media, open]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type based on media_type
+      const validTypes: Record<string, string[]> = {
+        image: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+        video: ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'],
+        pdf: ['application/pdf'],
+      };
+
+      const mediaType = formData.media_type;
+      if (mediaType && validTypes[mediaType]) {
+        if (!validTypes[mediaType].includes(file.type)) {
+          toast.error(`Por favor, selecione um arquivo do tipo ${mediaType.toUpperCase()}`);
+          return;
+        }
+      }
+
+      setSelectedFile(file);
+    }
+  };
+
+  const uploadFile = async (): Promise<string | null> => {
+    if (!selectedFile) return formData.file_url;
+
+    setIsUploading(true);
+    try {
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${formData.media_type}/${fileName}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from('media-files')
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('media-files')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao fazer upload do arquivo");
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!selectedFile && !media?.id && !formData.file_url) {
+      toast.error("Por favor, selecione um arquivo");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      // Upload file if there's a new file selected
+      const uploadedUrl = await uploadFile();
+      if (selectedFile && !uploadedUrl) {
+        setIsSubmitting(false);
+        return;
+      }
+
       const tagsArray = formData.tags
         .split(",")
         .map((tag) => tag.trim())
@@ -89,7 +159,7 @@ export function MediaForm({ open, onOpenChange, media }: MediaFormProps) {
         title: formData.title,
         description: formData.description || null,
         media_type: formData.media_type,
-        file_url: formData.file_url || null,
+        file_url: uploadedUrl || formData.file_url || null,
         tags: tagsArray.length > 0 ? tagsArray : null,
         procedure_id: formData.procedure_id || null,
       };
@@ -168,9 +238,10 @@ export function MediaForm({ open, onOpenChange, media }: MediaFormProps) {
               <Label htmlFor="media_type">Tipo de Mídia *</Label>
               <Select
                 value={formData.media_type}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, media_type: value })
-                }
+                onValueChange={(value) => {
+                  setFormData({ ...formData, media_type: value });
+                  setSelectedFile(null);
+                }}
                 required
               >
                 <SelectTrigger>
@@ -179,23 +250,64 @@ export function MediaForm({ open, onOpenChange, media }: MediaFormProps) {
                 <SelectContent>
                   <SelectItem value="image">Imagem</SelectItem>
                   <SelectItem value="video">Vídeo</SelectItem>
-                  <SelectItem value="document">Documento</SelectItem>
-                  <SelectItem value="other">Outro</SelectItem>
+                  <SelectItem value="pdf">PDF</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="file_url">URL do Arquivo</Label>
-              <Input
-                id="file_url"
-                type="url"
-                value={formData.file_url}
-                onChange={(e) =>
-                  setFormData({ ...formData, file_url: e.target.value })
-                }
-                placeholder="https://exemplo.com/arquivo.mp4"
-              />
+              <Label htmlFor="file">Arquivo *</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="file"
+                  type="file"
+                  onChange={handleFileChange}
+                  accept={
+                    formData.media_type === "image"
+                      ? "image/*"
+                      : formData.media_type === "video"
+                      ? "video/*"
+                      : formData.media_type === "pdf"
+                      ? "application/pdf"
+                      : "*"
+                  }
+                  className="flex-1"
+                  disabled={!formData.media_type}
+                />
+                {selectedFile && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedFile(null)}
+                  >
+                    Limpar
+                  </Button>
+                )}
+              </div>
+              {selectedFile && (
+                <p className="text-xs text-muted-foreground">
+                  Arquivo selecionado: {selectedFile.name}
+                </p>
+              )}
+              {media?.file_url && !selectedFile && (
+                <p className="text-xs text-muted-foreground">
+                  Arquivo atual:{" "}
+                  <a
+                    href={media.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline"
+                  >
+                    Ver arquivo
+                  </a>
+                </p>
+              )}
+              {!formData.media_type && (
+                <p className="text-xs text-muted-foreground">
+                  Selecione o tipo de mídia primeiro
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -238,10 +350,19 @@ export function MediaForm({ open, onOpenChange, media }: MediaFormProps) {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUploading}
               className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-golden"
             >
-              {isSubmitting ? "Salvando..." : "Salvar"}
+              {isUploading ? (
+                <>
+                  <Upload className="h-4 w-4 mr-2 animate-pulse" />
+                  Enviando arquivo...
+                </>
+              ) : isSubmitting ? (
+                "Salvando..."
+              ) : (
+                "Salvar"
+              )}
             </Button>
           </DialogFooter>
         </form>

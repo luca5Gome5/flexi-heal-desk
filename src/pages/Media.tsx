@@ -111,8 +111,8 @@ export default function Media() {
         return "Imagem";
       case "video":
         return "Vídeo";
-      case "document":
-        return "Documento";
+      case "pdf":
+        return "PDF";
       default:
         return "Outro";
     }
