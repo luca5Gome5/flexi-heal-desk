@@ -158,14 +158,20 @@ export const AppointmentDialog = ({
 
   const saveMutation = useMutation({
     mutationFn: async (values: AppointmentFormValues) => {
+      // Converter strings vazias para null nos campos UUID
+      const dataToSave = {
+        ...values,
+        procedure_id: values.procedure_id || null,
+      };
+
       if (appointment?.id) {
         const { error } = await supabase
           .from("appointments")
-          .update(values as any)
+          .update(dataToSave as any)
           .eq("id", appointment.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("appointments").insert(values as any);
+        const { error } = await supabase.from("appointments").insert(dataToSave as any);
         if (error) throw error;
       }
     },
