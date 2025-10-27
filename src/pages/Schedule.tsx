@@ -4,6 +4,7 @@ import { Calendar, Plus, Settings, ChevronLeft, ChevronRight } from "lucide-reac
 import { ScheduleCalendar } from "@/components/schedule/ScheduleCalendar";
 import { ScheduleConfig } from "@/components/schedule/ScheduleConfig";
 import { AppointmentDialog } from "@/components/schedule/AppointmentDialog";
+import { AppointmentDetails } from "@/components/schedule/AppointmentDetails";
 import {
   Select,
   SelectContent,
@@ -24,6 +25,7 @@ const Schedule = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isAppointmentDialogOpen, setIsAppointmentDialogOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 
   const { data: units } = useQuery({
@@ -69,6 +71,16 @@ const Schedule = () => {
 
   const handleNewAppointment = () => {
     setSelectedAppointment(null);
+    setIsAppointmentDialogOpen(true);
+  };
+
+  const handleAppointmentClick = (appointment: any) => {
+    setSelectedAppointment(appointment);
+    setIsDetailsOpen(true);
+  };
+
+  const handleEditFromDetails = () => {
+    setIsDetailsOpen(false);
     setIsAppointmentDialogOpen(true);
   };
 
@@ -190,16 +202,21 @@ const Schedule = () => {
         viewMode={viewMode}
         currentDate={currentDate}
         selectedUnit={selectedUnit}
-        onAppointmentClick={(appointment) => {
-          setSelectedAppointment(appointment);
-          setIsAppointmentDialogOpen(true);
-        }}
+        onAppointmentClick={handleAppointmentClick}
       />
 
       {/* Configuration Dialog */}
       <ScheduleConfig
         open={isConfigOpen}
         onOpenChange={setIsConfigOpen}
+      />
+
+      {/* Appointment Details */}
+      <AppointmentDetails
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+        appointment={selectedAppointment}
+        onEdit={handleEditFromDetails}
       />
 
       {/* Appointment Dialog */}

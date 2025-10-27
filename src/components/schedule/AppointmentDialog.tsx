@@ -164,6 +164,38 @@ export const AppointmentDialog = ({
         procedure_id: values.procedure_id || null,
       };
 
+      // Validar conflitos de horário
+      const { data: conflictingAppointments, error: checkError } = await supabase
+        .from("appointments")
+        .select("id, start_time, end_time")
+        .eq("appointment_date", values.appointment_date)
+        .eq("unit_id", values.unit_id)
+        .neq("id", appointment?.id || "");
+
+      if (checkError) throw checkError;
+
+      // Verificar se há conflito de horário
+      if (conflictingAppointments && conflictingAppointments.length > 0) {
+        const newStart = values.start_time;
+        const newEnd = values.end_time;
+
+        for (const existing of conflictingAppointments) {
+          const existingStart = existing.start_time;
+          const existingEnd = existing.end_time;
+
+          // Verificar sobreposição de horários
+          if (
+            (newStart >= existingStart && newStart < existingEnd) || // Novo começa durante existente
+            (newEnd > existingStart && newEnd <= existingEnd) || // Novo termina durante existente
+            (newStart <= existingStart && newEnd >= existingEnd) // Novo engloba existente
+          ) {
+            throw new Error(
+              `Já existe uma consulta agendada entre ${existingStart.slice(0, 5)} e ${existingEnd.slice(0, 5)} neste horário.`
+            );
+          }
+        }
+      }
+
       if (appointment?.id) {
         const { error } = await supabase
           .from("appointments")
