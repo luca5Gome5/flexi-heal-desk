@@ -156,16 +156,16 @@ export const ScheduleCalendar = ({
                       <div
                         key={apt.id}
                         onClick={() => onAppointmentClick(apt)}
-                        className={`absolute inset-x-1 ${getStatusColor(apt.status)} rounded p-1 cursor-pointer hover:opacity-90 transition-opacity border border-white/20 m-0.5`}
+                        className={`absolute inset-x-1 ${getStatusColor(apt.status)} rounded p-2 cursor-pointer hover:opacity-90 transition-opacity border border-white/20 m-0.5`}
                         style={{
-                          top: `${idx * 30}px`,
-                          height: "28px",
+                          top: `${idx * 45}px`,
+                          height: "42px",
                         }}
                       >
                         <div className="text-xs font-medium text-white truncate">
                           {apt.patient?.name}
                         </div>
-                        <div className="text-xs text-white/80 flex items-center gap-1">
+                        <div className="text-xs text-white/90 flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {apt.start_time.slice(0, 5)}
                         </div>
