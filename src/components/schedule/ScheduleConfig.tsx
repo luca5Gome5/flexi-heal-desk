@@ -23,7 +23,24 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
-import { Trash2 } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+
+type DayOfWeek = "segunda-feira" | "terça-feira" | "quarta-feira" | "quinta-feira" | "sexta-feira" | "sábado" | "domingo";
+
+const daysOfWeek: DayOfWeek[] = [
+  "segunda-feira",
+  "terça-feira", 
+  "quarta-feira",
+  "quinta-feira",
+  "sexta-feira",
+  "sábado",
+  "domingo"
+];
+
+interface TimeSlot {
+  startTime: string;
+  endTime: string;
+}
 
 interface ScheduleConfigProps {
   open: boolean;
@@ -31,10 +48,19 @@ interface ScheduleConfigProps {
 }
 
 export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
+  const [currentStep, setCurrentStep] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const [startTime, setStartTime] = useState("08:00");
-  const [endTime, setEndTime] = useState("18:00");
+  const [attendanceDates, setAttendanceDates] = useState<Date[]>([]);
+  const [procedureDates, setProcedureDates] = useState<Date[]>([]);
+  const [weekSchedule, setWeekSchedule] = useState<Record<DayOfWeek, TimeSlot>>({
+    "segunda-feira": { startTime: "08:00", endTime: "18:00" },
+    "terça-feira": { startTime: "08:00", endTime: "18:00" },
+    "quarta-feira": { startTime: "08:00", endTime: "18:00" },
+    "quinta-feira": { startTime: "08:00", endTime: "18:00" },
+    "sexta-feira": { startTime: "08:00", endTime: "18:00" },
+    "sábado": { startTime: "08:00", endTime: "12:00" },
+    "domingo": { startTime: "08:00", endTime: "12:00" },
+  });
   const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
   
   const queryClient = useQueryClient();
@@ -81,20 +107,21 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedUnit || selectedDates.length === 0) {
-        throw new Error("Selecione uma unidade e pelo menos uma data");
+      if (!selectedUnit || attendanceDates.length === 0) {
+        throw new Error("Selecione uma unidade e pelo menos uma data de atendimento");
       }
 
-      // Para cada data selecionada, criar availabilities
-      const promises = selectedDates.map((date) => {
-        const dayOfWeek = format(date, "EEEE", { locale: ptBR }).toLowerCase();
+      // Para cada data de atendimento selecionada, criar availabilities
+      const promises = attendanceDates.map((date) => {
+        const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
+        const timeSlot = weekSchedule[dayOfWeekKey];
         
         return supabase.from("procedure_availability").insert({
           unit_id: selectedUnit,
-          day_of_week: dayOfWeek as any,
-          start_time: startTime,
-          end_time: endTime,
-          procedure_id: selectedProcedures[0] || null, // Simplificado para o primeiro procedimento
+          day_of_week: dayOfWeekKey as any,
+          start_time: timeSlot.startTime,
+          end_time: timeSlot.endTime,
+          procedure_id: null,
         });
       });
 
@@ -102,9 +129,8 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unit-availabilities"] });
-      toast.success("Disponibilidade configurada com sucesso!");
-      setSelectedDates([]);
-      setSelectedProcedures([]);
+      toast.success("Configuração salva com sucesso!");
+      handleReset();
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -129,6 +155,23 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     saveMutation.mutate();
   };
 
+  const handleReset = () => {
+    setCurrentStep(1);
+    setSelectedUnit("");
+    setAttendanceDates([]);
+    setProcedureDates([]);
+    setSelectedProcedures([]);
+    setWeekSchedule({
+      "segunda-feira": { startTime: "08:00", endTime: "18:00" },
+      "terça-feira": { startTime: "08:00", endTime: "18:00" },
+      "quarta-feira": { startTime: "08:00", endTime: "18:00" },
+      "quinta-feira": { startTime: "08:00", endTime: "18:00" },
+      "sexta-feira": { startTime: "08:00", endTime: "18:00" },
+      "sábado": { startTime: "08:00", endTime: "12:00" },
+      "domingo": { startTime: "08:00", endTime: "12:00" },
+    });
+  };
+
   const toggleProcedure = (procedureId: string) => {
     setSelectedProcedures((prev) =>
       prev.includes(procedureId)
@@ -137,8 +180,28 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     );
   };
 
+  const updateTimeSlot = (day: DayOfWeek, field: "startTime" | "endTime", value: string) => {
+    setWeekSchedule((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [field]: value,
+      },
+    }));
+  };
+
+  const canProceedToNextStep = () => {
+    if (currentStep === 1) return selectedUnit !== "";
+    if (currentStep === 2) return attendanceDates.length > 0;
+    if (currentStep === 3) return true;
+    return false;
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) handleReset();
+      onOpenChange(isOpen);
+    }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configuração de Disponibilidade</DialogTitle>
@@ -151,99 +214,199 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
           </TabsList>
 
           <TabsContent value="config" className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <Label>Unidade</Label>
-                <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma unidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units?.map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Selecione as Datas de Atendimento</Label>
-                <div className="border rounded-lg p-4 mt-2">
-                  <Calendar
-                    mode="multiple"
-                    selected={selectedDates}
-                    onSelect={(dates) => setSelectedDates(dates || [])}
-                    locale={ptBR}
-                    className="mx-auto"
-                  />
-                  {selectedDates.length > 0 && (
-                    <div className="mt-4 text-sm">
-                      <strong>Datas selecionadas:</strong>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {selectedDates.map((date) => (
-                          <span
-                            key={date.toISOString()}
-                            className="bg-accent text-white px-2 py-1 rounded text-xs"
-                          >
-                            {format(date, "dd/MM/yyyy")}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-between mb-6">
+              {[1, 2, 3, 4].map((step) => (
+                <div key={step} className="flex items-center flex-1">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                      currentStep >= step
+                        ? "bg-[hsl(var(--accent))] text-white"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {step}
+                  </div>
+                  {step < 4 && (
+                    <div
+                      className={`flex-1 h-1 mx-2 ${
+                        currentStep > step ? "bg-[hsl(var(--accent))]" : "bg-muted"
+                      }`}
+                    />
                   )}
                 </div>
-              </div>
+              ))}
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Horário de Início</Label>
-                  <Input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
+            <div className="min-h-[400px]">
+              {/* Step 1: Selecionar Unidade */}
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Passo 1: Selecione a Unidade</h3>
+                    <Label>Unidade</Label>
+                    <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma unidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {units?.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label>Horário de Término</Label>
-                  <Input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
-                </div>
-              </div>
+              )}
 
-              <div>
-                <Label>Procedimentos Disponíveis</Label>
-                <div className="border rounded-lg p-4 mt-2 max-h-[200px] overflow-y-auto">
-                  <div className="space-y-2">
-                    {procedures?.map((procedure) => (
-                      <label
-                        key={procedure.id}
-                        className="flex items-center gap-2 p-2 hover:bg-accent/5 rounded cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedProcedures.includes(procedure.id)}
-                          onChange={() => toggleProcedure(procedure.id)}
-                          className="rounded"
-                        />
-                        <span className="text-sm">{procedure.name}</span>
-                      </label>
+              {/* Step 2: Selecionar Datas de Atendimento */}
+              {currentStep === 2 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold mb-4">Passo 2: Selecione os Dias de Atendimento</h3>
+                  <div className="border rounded-lg p-4">
+                    <Calendar
+                      mode="multiple"
+                      selected={attendanceDates}
+                      onSelect={(dates) => setAttendanceDates(dates || [])}
+                      locale={ptBR}
+                      className="mx-auto"
+                    />
+                    {attendanceDates.length > 0 && (
+                      <div className="mt-4 text-sm">
+                        <strong>Datas selecionadas ({attendanceDates.length}):</strong>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {attendanceDates.map((date) => (
+                            <span
+                              key={date.toISOString()}
+                              className="bg-accent text-white px-2 py-1 rounded text-xs"
+                            >
+                              {format(date, "dd/MM/yyyy")}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Configurar Horários por Dia da Semana */}
+              {currentStep === 3 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold mb-4">Passo 3: Configure os Horários por Dia da Semana</h3>
+                  <div className="space-y-3">
+                    {daysOfWeek.map((day) => (
+                      <Card key={day} className="p-4">
+                        <div className="grid grid-cols-3 gap-4 items-center">
+                          <Label className="capitalize font-medium">{day}</Label>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Início</Label>
+                            <Input
+                              type="time"
+                              value={weekSchedule[day].startTime}
+                              onChange={(e) => updateTimeSlot(day, "startTime", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Término</Label>
+                            <Input
+                              type="time"
+                              value={weekSchedule[day].endTime}
+                              onChange={(e) => updateTimeSlot(day, "endTime", e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </Card>
                     ))}
                   </div>
                 </div>
-              </div>
+              )}
 
+              {/* Step 4: Selecionar Dias de Procedimentos */}
+              {currentStep === 4 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold mb-4">Passo 4: Selecione os Dias com Procedimentos (Opcional)</h3>
+                  <div className="border rounded-lg p-4">
+                    <Calendar
+                      mode="multiple"
+                      selected={procedureDates}
+                      onSelect={(dates) => setProcedureDates(dates || [])}
+                      locale={ptBR}
+                      className="mx-auto"
+                    />
+                    {procedureDates.length > 0 && (
+                      <div className="mt-4 text-sm">
+                        <strong>Datas com procedimentos ({procedureDates.length}):</strong>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {procedureDates.map((date) => (
+                            <span
+                              key={date.toISOString()}
+                              className="bg-accent text-white px-2 py-1 rounded text-xs"
+                            >
+                              {format(date, "dd/MM/yyyy")}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="mt-4">
+                    <Label>Procedimentos Disponíveis</Label>
+                    <div className="border rounded-lg p-4 mt-2 max-h-[200px] overflow-y-auto">
+                      <div className="space-y-2">
+                        {procedures?.map((procedure) => (
+                          <label
+                            key={procedure.id}
+                            className="flex items-center gap-2 p-2 hover:bg-accent/5 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedProcedures.includes(procedure.id)}
+                              onChange={() => toggleProcedure(procedure.id)}
+                              className="rounded"
+                            />
+                            <span className="text-sm">{procedure.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between pt-4 border-t">
               <Button
-                onClick={handleSave}
-                disabled={!selectedUnit || selectedDates.length === 0}
-                className="w-full bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90"
+                variant="outline"
+                onClick={() => setCurrentStep((prev) => Math.max(1, prev - 1))}
+                disabled={currentStep === 1}
               >
-                Salvar Configuração
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Voltar
               </Button>
+
+              {currentStep < 4 ? (
+                <Button
+                  onClick={() => setCurrentStep((prev) => prev + 1)}
+                  disabled={!canProceedToNextStep()}
+                  className="bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90"
+                >
+                  Próximo
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSave}
+                  disabled={!selectedUnit || attendanceDates.length === 0}
+                  className="bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90"
+                >
+                  Salvar Configuração
+                </Button>
+              )}
             </div>
           </TabsContent>
 
