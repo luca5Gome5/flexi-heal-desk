@@ -191,11 +191,19 @@ export const AppointmentDialog = ({
           const existingStart = existing.start_time;
           const existingEnd = existing.end_time;
 
+          // Normalizar horários para comparação (remover segundos se existirem)
+          const normalizeTime = (time: string) => time.substring(0, 5);
+          
+          const newStartNorm = normalizeTime(newStart);
+          const newEndNorm = normalizeTime(newEnd);
+          const existingStartNorm = normalizeTime(existingStart);
+          const existingEndNorm = normalizeTime(existingEnd);
+
           // Verificar sobreposição de horários
           // Permite agendamento se começar exatamente no horário de término do anterior
-          if (newStart < existingEnd && newEnd > existingStart) {
+          if (newStartNorm < existingEndNorm && newEndNorm > existingStartNorm) {
             throw new Error(
-              `Já existe uma consulta agendada entre ${existingStart.slice(0, 5)} e ${existingEnd.slice(0, 5)} neste horário.`
+              `Já existe uma consulta agendada entre ${existingStartNorm} e ${existingEndNorm} neste horário.`
             );
           }
         }
