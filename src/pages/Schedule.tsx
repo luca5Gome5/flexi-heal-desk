@@ -98,7 +98,7 @@ const Schedule = () => {
             className="bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90 text-white"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Novo Evento
+            Nova Consulta
           </Button>
           <Button variant="outline" onClick={() => setIsConfigOpen(true)}>
             <Settings className="mr-2 h-4 w-4" />
