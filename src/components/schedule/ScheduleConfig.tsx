@@ -71,6 +71,7 @@ interface ScheduleConfigProps {
 export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
+  const [viewingUnit, setViewingUnit] = useState<string>("");
   const [attendanceDates, setAttendanceDates] = useState<Date[]>([]);
   const [procedureDates, setProcedureDates] = useState<Date[]>([]);
   const [weekSchedule, setWeekSchedule] = useState<Record<DayOfWeek, TimeSlot>>({
@@ -112,18 +113,29 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     },
   });
 
-  const { data: availabilities } = useQuery({
-    queryKey: ["unit-availabilities", selectedUnit],
+  const { data: allAvailabilities } = useQuery({
+    queryKey: ["all-availabilities"],
     queryFn: async () => {
-      if (!selectedUnit) return [];
       const { data, error } = await supabase
         .from("procedure_availability")
-        .select("*")
-        .eq("unit_id", selectedUnit);
+        .select("*");
       if (error) throw error;
       return data;
     },
-    enabled: !!selectedUnit,
+  });
+
+  const { data: viewingAvailabilities } = useQuery({
+    queryKey: ["unit-availabilities", viewingUnit],
+    queryFn: async () => {
+      if (!viewingUnit) return [];
+      const { data, error } = await supabase
+        .from("procedure_availability")
+        .select("*")
+        .eq("unit_id", viewingUnit);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!viewingUnit,
   });
 
   const saveMutation = useMutation({
@@ -180,6 +192,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
   const handleReset = () => {
     setCurrentStep(1);
     setSelectedUnit("");
+    setViewingUnit("");
     setAttendanceDates([]);
     setProcedureDates([]);
     setSelectedProcedures([]);
@@ -192,6 +205,15 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
       "sábado": { startTime: "08:00", endTime: "12:00" },
       "domingo": { startTime: "08:00", endTime: "12:00" },
     });
+  };
+
+  const getUnitAvailabilitySummary = (unitId: string) => {
+    const unitAvails = allAvailabilities?.filter(a => a.unit_id === unitId) || [];
+    const daysWithService = new Set(unitAvails.map(a => a.day_of_week));
+    const daysWithProcedures = new Set(
+      unitAvails.filter(a => a.procedure_id).map(a => a.day_of_week)
+    );
+    return { daysWithService, daysWithProcedures, availabilities: unitAvails };
   };
 
   const toggleProcedure = (procedureId: string) => {
@@ -433,39 +455,144 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
           </TabsContent>
 
           <TabsContent value="list" className="space-y-4">
-            {!selectedUnit ? (
-              <p className="text-center text-muted-foreground py-8">
-                Selecione uma unidade para ver as disponibilidades
-              </p>
-            ) : availabilities && availabilities.length > 0 ? (
-              <div className="space-y-2">
-                {availabilities.map((availability) => {
-                  const dayInPortuguese = dbToDayOfWeek[availability.day_of_week as DbDayOfWeek] || availability.day_of_week;
-                  return (
-                    <Card key={availability.id} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium capitalize">{dayInPortuguese}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {availability.start_time} - {availability.end_time}
-                          </p>
+            {!viewingUnit ? (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Todas as Unidades</h3>
+                <div className="grid gap-4">
+                  {units?.map((unit) => {
+                    const summary = getUnitAvailabilitySummary(unit.id);
+                    return (
+                      <Card
+                        key={unit.id}
+                        className="p-4 cursor-pointer hover:bg-accent/5 transition-colors"
+                        onClick={() => setViewingUnit(unit.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold">{unit.name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {summary.daysWithService.size} dias com atendimento
+                              {summary.daysWithProcedures.size > 0 && 
+                                ` • ${summary.daysWithProcedures.size} com procedimentos`
+                              }
+                            </p>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteMutation.mutate(availability.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </Card>
-                  );
-                })}
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
-              <p className="text-center text-muted-foreground py-8">
-                Nenhuma disponibilidade cadastrada para esta unidade
-              </p>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setViewingUnit("")}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Voltar
+                  </Button>
+                  <h3 className="text-lg font-semibold">
+                    {units?.find(u => u.id === viewingUnit)?.name}
+                  </h3>
+                </div>
+
+                {viewingAvailabilities && viewingAvailabilities.length > 0 ? (
+                  <>
+                    {/* Legenda */}
+                    <div className="flex gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded bg-green-500/20 border-2 border-green-500" />
+                        <span>Com atendimento</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded bg-[hsl(var(--accent))]/20 border-2 border-[hsl(var(--accent))]" />
+                        <span>Com procedimentos</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded bg-red-500/20 border-2 border-red-500" />
+                        <span>Sem atendimento</span>
+                      </div>
+                    </div>
+
+                    {/* Calendário Visual por Dia da Semana */}
+                    <div className="grid grid-cols-7 gap-2">
+                      {daysOfWeek.map((day) => {
+                        const dbDay = dayOfWeekMapping[day];
+                        const hasService = viewingAvailabilities.some(
+                          a => a.day_of_week === dbDay && !a.procedure_id
+                        );
+                        const hasProcedure = viewingAvailabilities.some(
+                          a => a.day_of_week === dbDay && a.procedure_id
+                        );
+                        
+                        let bgColor = "bg-red-500/20 border-red-500";
+                        if (hasProcedure) {
+                          bgColor = "bg-[hsl(var(--accent))]/20 border-[hsl(var(--accent))]";
+                        } else if (hasService) {
+                          bgColor = "bg-green-500/20 border-green-500";
+                        }
+
+                        return (
+                          <Card
+                            key={day}
+                            className={`p-3 text-center border-2 ${bgColor}`}
+                          >
+                            <p className="font-medium text-sm capitalize">{day}</p>
+                          </Card>
+                        );
+                      })}
+                    </div>
+
+                    {/* Horários por Dia da Semana */}
+                    <div className="space-y-3 mt-6">
+                      <h4 className="font-semibold">Horários de Atendimento</h4>
+                      {daysOfWeek.map((day) => {
+                        const dbDay = dayOfWeekMapping[day];
+                        const dayAvails = viewingAvailabilities.filter(
+                          a => a.day_of_week === dbDay
+                        );
+                        
+                        if (dayAvails.length === 0) return null;
+
+                        return (
+                          <Card key={day} className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <p className="font-medium capitalize">{day}</p>
+                                {dayAvails.map((avail, idx) => (
+                                  <p key={idx} className="text-sm text-muted-foreground">
+                                    {avail.start_time} - {avail.end_time}
+                                    {avail.procedure_id && " (com procedimentos)"}
+                                  </p>
+                                ))}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  dayAvails.forEach(avail => 
+                                    deleteMutation.mutate(avail.id)
+                                  );
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhuma disponibilidade cadastrada para esta unidade
+                  </p>
+                )}
+              </div>
             )}
           </TabsContent>
         </Tabs>
