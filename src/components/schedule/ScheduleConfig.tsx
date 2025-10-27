@@ -20,10 +20,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
-import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 
 type DayOfWeek = "segunda-feira" | "terça-feira" | "quarta-feira" | "quinta-feira" | "sexta-feira" | "sábado" | "domingo";
 type DbDayOfWeek = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
@@ -62,6 +62,44 @@ interface TimeSlot {
   startTime: string;
   endTime: string;
 }
+
+// Feriados nacionais do Brasil (fixos)
+const getBrazilianHolidays = (year: number): Date[] => {
+  const holidays: Date[] = [
+    new Date(year, 0, 1),   // Ano Novo
+    new Date(year, 3, 21),  // Tiradentes
+    new Date(year, 4, 1),   // Dia do Trabalho
+    new Date(year, 8, 7),   // Independência
+    new Date(year, 9, 12),  // Nossa Senhora Aparecida
+    new Date(year, 10, 2),  // Finados
+    new Date(year, 10, 15), // Proclamação da República
+    new Date(year, 11, 25), // Natal
+  ];
+
+  // Calcular Páscoa e feriados móveis
+  const easter = getEasterDate(year);
+  holidays.push(
+    new Date(easter.getTime() - 47 * 24 * 60 * 60 * 1000), // Carnaval (47 dias antes)
+    new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000),  // Sexta-feira Santa
+    new Date(easter.getTime() + 60 * 24 * 60 * 60 * 1000), // Corpus Christi
+  );
+
+  return holidays;
+};
+
+// Algoritmo para calcular a data da Páscoa
+const getEasterDate = (year: number): Date => {
+  const f = Math.floor;
+  const G = year % 19;
+  const C = f(year / 100);
+  const H = (C - f(C / 4) - f((8 * C + 13) / 25) + 19 * G + 15) % 30;
+  const I = H - f(H / 28) * (1 - f(29 / (H + 1)) * f((21 - G) / 11));
+  const J = (year + f(year / 4) + I + 2 - C + f(C / 4)) % 7;
+  const L = I - J;
+  const month = 3 + f((L + 40) / 44);
+  const day = L + 28 - 31 * f(month / 4);
+  return new Date(year, month - 1, day);
+};
 
 interface ScheduleConfigProps {
   open: boolean;
@@ -270,6 +308,47 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     return { daysWithService, daysWithProcedures, availabilities: unitAvails };
   };
 
+  const selectAllBusinessDays = () => {
+    const today = new Date();
+    const months = 12; // Próximos 12 meses
+    const businessDays: Date[] = [];
+
+    // Coletar feriados para os próximos 12 meses
+    const currentYear = today.getFullYear();
+    const nextYear = currentYear + 1;
+    const holidays = [
+      ...getBrazilianHolidays(currentYear),
+      ...getBrazilianHolidays(nextYear)
+    ];
+
+    // Criar set de strings de feriados para comparação rápida
+    const holidayStrings = new Set(
+      holidays.map(h => format(h, "yyyy-MM-dd"))
+    );
+
+    for (let i = 0; i < months; i++) {
+      const monthDate = addMonths(today, i);
+      const start = startOfMonth(monthDate);
+      const end = endOfMonth(monthDate);
+      
+      const daysInMonth = eachDayOfInterval({ start, end });
+      
+      daysInMonth.forEach(day => {
+        const dayOfWeek = getDay(day);
+        const dateString = format(day, "yyyy-MM-dd");
+        
+        // Incluir segunda (1) a sábado (6), excluir domingo (0)
+        // E não incluir feriados
+        if (dayOfWeek >= 1 && dayOfWeek <= 6 && !holidayStrings.has(dateString)) {
+          businessDays.push(day);
+        }
+      });
+    }
+
+    setAttendanceDates(businessDays);
+    toast.success(`${businessDays.length} dias úteis selecionados para os próximos 12 meses`);
+  };
+
   const toggleProcedure = (procedureId: string) => {
     setSelectedProcedures((prev) =>
       prev.includes(procedureId)
@@ -362,7 +441,22 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
               {/* Step 2: Selecionar Datas de Atendimento */}
               {currentStep === 2 && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold mb-4">Passo 2: Selecione os Dias de Atendimento</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Passo 2: Selecione os Dias de Atendimento</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={selectAllBusinessDays}
+                      className="gap-2"
+                    >
+                      <CalendarDays className="h-4 w-4" />
+                      Selecionar Todos os Dias Úteis
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Você pode selecionar manualmente ou usar o botão acima para selecionar automaticamente 
+                    todos os dias úteis (segunda a sábado) dos próximos 12 meses, excluindo feriados nacionais.
+                  </p>
                   <div className="border rounded-lg p-4">
                     <Calendar
                       mode="multiple"
@@ -374,8 +468,8 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                     {attendanceDates.length > 0 && (
                       <div className="mt-4 text-sm">
                         <strong>Datas selecionadas ({attendanceDates.length}):</strong>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {attendanceDates.map((date) => (
+                        <div className="flex flex-wrap gap-2 mt-2 max-h-[150px] overflow-y-auto">
+                          {attendanceDates.slice(0, 20).map((date) => (
                             <span
                               key={date.toISOString()}
                               className="bg-accent text-white px-2 py-1 rounded text-xs"
@@ -383,6 +477,11 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                               {format(date, "dd/MM/yyyy")}
                             </span>
                           ))}
+                          {attendanceDates.length > 20 && (
+                            <span className="text-xs text-muted-foreground self-center">
+                              +{attendanceDates.length - 20} datas...
+                            </span>
+                          )}
                         </div>
                       </div>
                     )}
