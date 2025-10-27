@@ -112,6 +112,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
   const [viewingUnit, setViewingUnit] = useState<string>("");
   const [attendanceDates, setAttendanceDates] = useState<Date[]>([]);
   const [procedureDates, setProcedureDates] = useState<Date[]>([]);
+  const [procedureWeekDays, setProcedureWeekDays] = useState<number[]>([]);
   const [weekSchedule, setWeekSchedule] = useState<Record<DayOfWeek, TimeSlot>>({
     "segunda-feira": { startTime: "08:00", endTime: "18:00" },
     "terça-feira": { startTime: "08:00", endTime: "18:00" },
@@ -287,6 +288,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     setViewingUnit("");
     setAttendanceDates([]);
     setProcedureDates([]);
+    setProcedureWeekDays([]);
     setSelectedProcedures([]);
     setWeekSchedule({
       "segunda-feira": { startTime: "08:00", endTime: "18:00" },
@@ -347,6 +349,61 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
 
     setAttendanceDates(businessDays);
     toast.success(`${businessDays.length} dias úteis selecionados para os próximos 12 meses`);
+  };
+
+  const selectProcedureDaysByWeekDays = () => {
+    if (procedureWeekDays.length === 0) {
+      toast.error("Selecione pelo menos um dia da semana");
+      return;
+    }
+
+    const today = new Date();
+    const months = 12;
+    const procedureDays: Date[] = [];
+
+    const currentYear = today.getFullYear();
+    const nextYear = currentYear + 1;
+    const holidays = [
+      ...getBrazilianHolidays(currentYear),
+      ...getBrazilianHolidays(nextYear)
+    ];
+
+    const holidayStrings = new Set(
+      holidays.map(h => format(h, "yyyy-MM-dd"))
+    );
+
+    for (let i = 0; i < months; i++) {
+      const monthDate = addMonths(today, i);
+      const start = startOfMonth(monthDate);
+      const end = endOfMonth(monthDate);
+      
+      const daysInMonth = eachDayOfInterval({ start, end });
+      
+      daysInMonth.forEach(day => {
+        const dayOfWeek = getDay(day);
+        const dateString = format(day, "yyyy-MM-dd");
+        
+        // Incluir apenas os dias da semana selecionados e não incluir feriados
+        if (procedureWeekDays.includes(dayOfWeek) && !holidayStrings.has(dateString)) {
+          procedureDays.push(day);
+        }
+      });
+    }
+
+    setProcedureDates(procedureDays);
+    
+    const dayNames = procedureWeekDays.map(d => {
+      const names = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+      return names[d];
+    }).join(", ");
+    
+    toast.success(`${procedureDays.length} datas selecionadas para ${dayNames}`);
+  };
+
+  const toggleProcedureWeekDay = (day: number) => {
+    setProcedureWeekDays(prev => 
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
   };
 
   const toggleProcedure = (procedureId: string) => {
@@ -525,8 +582,57 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
               {currentStep === 4 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold mb-4">Passo 4: Selecione os Dias com Procedimentos (Opcional)</h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Marque as datas em que haverá procedimentos disponíveis nesta unidade.
+                  
+                  {/* Seleção rápida por dias da semana */}
+                  <Card className="p-4 bg-accent/5">
+                    <h4 className="font-medium mb-3">Seleção Rápida por Dias da Semana</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Selecione os dias da semana que terão procedimentos durante todo o ano:
+                    </p>
+                    <div className="grid grid-cols-7 gap-2 mb-3">
+                      {[
+                        { day: 0, name: "Dom" },
+                        { day: 1, name: "Seg" },
+                        { day: 2, name: "Ter" },
+                        { day: 3, name: "Qua" },
+                        { day: 4, name: "Qui" },
+                        { day: 5, name: "Sex" },
+                        { day: 6, name: "Sáb" },
+                      ].map(({ day, name }) => (
+                        <Button
+                          key={day}
+                          variant={procedureWeekDays.includes(day) ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => toggleProcedureWeekDay(day)}
+                          className={procedureWeekDays.includes(day) ? "bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90" : ""}
+                        >
+                          {name}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      onClick={selectProcedureDaysByWeekDays}
+                      disabled={procedureWeekDays.length === 0}
+                      className="w-full bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90"
+                    >
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      Aplicar para o Ano Todo
+                    </Button>
+                  </Card>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        ou selecione manualmente
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    Marque as datas específicas em que haverá procedimentos disponíveis:
                   </p>
                   <div className="border rounded-lg p-4">
                     <Calendar
@@ -539,8 +645,8 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                     {procedureDates.length > 0 && (
                       <div className="mt-4 text-sm">
                         <strong>Datas com procedimentos ({procedureDates.length}):</strong>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {procedureDates.map((date) => (
+                        <div className="flex flex-wrap gap-2 mt-2 max-h-[150px] overflow-y-auto">
+                          {procedureDates.slice(0, 20).map((date) => (
                             <span
                               key={date.toISOString()}
                               className="bg-[hsl(var(--accent))] text-white px-2 py-1 rounded text-xs"
@@ -548,6 +654,11 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                               {format(date, "dd/MM/yyyy")}
                             </span>
                           ))}
+                          {procedureDates.length > 20 && (
+                            <span className="text-xs text-muted-foreground self-center">
+                              +{procedureDates.length - 20} datas...
+                            </span>
+                          )}
                         </div>
                       </div>
                     )}
