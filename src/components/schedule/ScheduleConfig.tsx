@@ -146,6 +146,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
 
       // Agrupar datas por dia da semana
       const datesByDayOfWeek = new Map<DbDayOfWeek, Date[]>();
+      const procedureDatesByDay = new Set<DbDayOfWeek>();
       
       attendanceDates.forEach((date) => {
         const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
@@ -157,51 +158,59 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
         datesByDayOfWeek.get(dbDayOfWeek)!.push(date);
       });
 
-      // Para cada dia da semana único, criar apenas UMA availability
-      const promises = Array.from(datesByDayOfWeek.entries()).map(([dbDay, dates]) => {
+      // Marcar quais dias da semana têm procedimentos
+      procedureDates.forEach((date) => {
+        const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
+        const dbDayOfWeek = dayOfWeekMapping[dayOfWeekKey];
+        procedureDatesByDay.add(dbDayOfWeek);
+      });
+
+      // Primeiro, buscar o primeiro procedimento ativo para usar como referência
+      const { data: firstProcedure } = await supabase
+        .from("procedures")
+        .select("id")
+        .eq("status", true)
+        .limit(1)
+        .single();
+
+      // Para cada dia da semana único, criar availabilities
+      const promises = Array.from(datesByDayOfWeek.entries()).flatMap(([dbDay, dates]) => {
         const firstDate = dates[0];
         const dayOfWeekKey = format(firstDate, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
         const timeSlot = weekSchedule[dayOfWeekKey];
+        const hasProcedures = procedureDatesByDay.has(dbDay);
         
-        return supabase.from("procedure_availability").insert({
-          unit_id: selectedUnit,
-          day_of_week: dbDay,
-          start_time: timeSlot.startTime,
-          end_time: timeSlot.endTime,
-          procedure_id: null,
-        });
-      });
-
-      // Adicionar procedimentos para os dias selecionados
-      if (procedureDates.length > 0) {
-        const procedureDatesByDay = new Map<DbDayOfWeek, Date[]>();
+        // Se tem procedimentos, criar dois registros: um sem procedure_id e um com
+        if (hasProcedures && firstProcedure) {
+          return [
+            supabase.from("procedure_availability").insert({
+              unit_id: selectedUnit,
+              day_of_week: dbDay,
+              start_time: timeSlot.startTime,
+              end_time: timeSlot.endTime,
+              procedure_id: null,
+            }),
+            supabase.from("procedure_availability").insert({
+              unit_id: selectedUnit,
+              day_of_week: dbDay,
+              start_time: timeSlot.startTime,
+              end_time: timeSlot.endTime,
+              procedure_id: firstProcedure.id,
+            })
+          ];
+        }
         
-        procedureDates.forEach((date) => {
-          const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
-          const dbDayOfWeek = dayOfWeekMapping[dayOfWeekKey];
-          
-          if (!procedureDatesByDay.has(dbDayOfWeek)) {
-            procedureDatesByDay.set(dbDayOfWeek, []);
-          }
-          procedureDatesByDay.get(dbDayOfWeek)!.push(date);
-        });
-
-        const procedurePromises = Array.from(procedureDatesByDay.entries()).map(([dbDay, dates]) => {
-          const firstDate = dates[0];
-          const dayOfWeekKey = format(firstDate, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
-          const timeSlot = weekSchedule[dayOfWeekKey];
-          
-          return supabase.from("procedure_availability").insert({
+        // Senão, criar apenas o registro normal
+        return [
+          supabase.from("procedure_availability").insert({
             unit_id: selectedUnit,
             day_of_week: dbDay,
             start_time: timeSlot.startTime,
             end_time: timeSlot.endTime,
-            procedure_id: "has_procedures", // Flag para indicar que há procedimentos
-          });
-        });
-
-        promises.push(...procedurePromises);
-      }
+            procedure_id: null,
+          })
+        ];
+      });
 
       await Promise.all(promises);
     },
