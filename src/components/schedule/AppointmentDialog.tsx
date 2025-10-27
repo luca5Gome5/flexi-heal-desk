@@ -35,7 +35,7 @@ const appointmentSchema = z.object({
   patient_id: z.string().min(1, "Selecione um paciente"),
   doctor_id: z.string().min(1, "Selecione um médico"),
   unit_id: z.string().min(1, "Selecione uma unidade"),
-  procedure_id: z.string().optional(),
+  procedure_id: z.string().optional().nullable(),
   appointment_date: z.string().min(1, "Selecione uma data"),
   start_time: z.string().min(1, "Informe o horário de início"),
   end_time: z.string().min(1, "Informe o horário de término"),
@@ -159,28 +159,33 @@ export const AppointmentDialog = ({
   const saveMutation = useMutation({
     mutationFn: async (values: AppointmentFormValues) => {
       // Converter strings vazias para null nos campos UUID
-      const dataToSave = {
-        ...values,
-        patient_id: values.patient_id || null,
-        doctor_id: values.doctor_id || null,
-        unit_id: values.unit_id || null,
-        procedure_id: values.procedure_id || null,
+      const dataToSave: any = {
+        patient_id: values.patient_id?.trim() || null,
+        doctor_id: values.doctor_id?.trim() || null,
+        unit_id: values.unit_id?.trim() || null,
+        procedure_id: values.procedure_id?.trim() || null,
+        appointment_date: values.appointment_date,
+        start_time: values.start_time,
+        end_time: values.end_time,
+        is_procedure: values.is_procedure,
+        status: values.status,
+        notes: values.notes || null,
       };
 
       // Validar conflitos de horário
       const { data: conflictingAppointments, error: checkError } = await supabase
         .from("appointments")
         .select("id, start_time, end_time")
-        .eq("appointment_date", values.appointment_date)
-        .eq("unit_id", values.unit_id)
-        .neq("id", appointment?.id || "");
+        .eq("appointment_date", dataToSave.appointment_date)
+        .eq("unit_id", dataToSave.unit_id)
+        .neq("id", appointment?.id || "00000000-0000-0000-0000-000000000000");
 
       if (checkError) throw checkError;
 
       // Verificar se há conflito de horário
       if (conflictingAppointments && conflictingAppointments.length > 0) {
-        const newStart = values.start_time;
-        const newEnd = values.end_time;
+        const newStart = dataToSave.start_time;
+        const newEnd = dataToSave.end_time;
 
         for (const existing of conflictingAppointments) {
           const existingStart = existing.start_time;
