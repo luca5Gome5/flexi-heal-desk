@@ -141,16 +141,16 @@ export function MessageForm({ open, onOpenChange, message }: MessageFormProps) {
             <div className="space-y-2">
               <Label htmlFor="procedure_id">Procedimento (Opcional)</Label>
               <Select
-                value={formData.procedure_id}
+                value={formData.procedure_id || "none"}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, procedure_id: value })
+                  setFormData({ ...formData, procedure_id: value === "none" ? "" : value })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Nenhum (mensagem geral)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum (mensagem geral)</SelectItem>
+                  <SelectItem value="none">Nenhum (mensagem geral)</SelectItem>
                   {procedures?.map((procedure) => (
                     <SelectItem key={procedure.id} value={procedure.id}>
                       {procedure.name}
@@ -166,16 +166,16 @@ export function MessageForm({ open, onOpenChange, message }: MessageFormProps) {
             <div className="space-y-2">
               <Label htmlFor="channel">Canal de Envio</Label>
               <Select
-                value={formData.channel}
+                value={formData.channel || "none"}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, channel: value })
+                  setFormData({ ...formData, channel: value === "none" ? "" : value })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o canal" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Não especificado</SelectItem>
+                  <SelectItem value="none">Não especificado</SelectItem>
                   <SelectItem value="whatsapp">WhatsApp</SelectItem>
                   <SelectItem value="sms">SMS</SelectItem>
                   <SelectItem value="email">E-mail</SelectItem>
