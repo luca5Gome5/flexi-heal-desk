@@ -144,24 +144,69 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
         throw new Error("Selecione uma unidade e pelo menos uma data de atendimento");
       }
 
-      // Para cada data de atendimento selecionada, criar availabilities
-      const promises = attendanceDates.map((date) => {
+      // Agrupar datas por dia da semana
+      const datesByDayOfWeek = new Map<DbDayOfWeek, Date[]>();
+      
+      attendanceDates.forEach((date) => {
         const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
-        const timeSlot = weekSchedule[dayOfWeekKey];
         const dbDayOfWeek = dayOfWeekMapping[dayOfWeekKey];
+        
+        if (!datesByDayOfWeek.has(dbDayOfWeek)) {
+          datesByDayOfWeek.set(dbDayOfWeek, []);
+        }
+        datesByDayOfWeek.get(dbDayOfWeek)!.push(date);
+      });
+
+      // Para cada dia da semana único, criar apenas UMA availability
+      const promises = Array.from(datesByDayOfWeek.entries()).map(([dbDay, dates]) => {
+        const firstDate = dates[0];
+        const dayOfWeekKey = format(firstDate, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
+        const timeSlot = weekSchedule[dayOfWeekKey];
         
         return supabase.from("procedure_availability").insert({
           unit_id: selectedUnit,
-          day_of_week: dbDayOfWeek,
+          day_of_week: dbDay,
           start_time: timeSlot.startTime,
           end_time: timeSlot.endTime,
           procedure_id: null,
         });
       });
 
+      // Adicionar procedimentos para os dias selecionados
+      if (procedureDates.length > 0) {
+        const procedureDatesByDay = new Map<DbDayOfWeek, Date[]>();
+        
+        procedureDates.forEach((date) => {
+          const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
+          const dbDayOfWeek = dayOfWeekMapping[dayOfWeekKey];
+          
+          if (!procedureDatesByDay.has(dbDayOfWeek)) {
+            procedureDatesByDay.set(dbDayOfWeek, []);
+          }
+          procedureDatesByDay.get(dbDayOfWeek)!.push(date);
+        });
+
+        const procedurePromises = Array.from(procedureDatesByDay.entries()).map(([dbDay, dates]) => {
+          const firstDate = dates[0];
+          const dayOfWeekKey = format(firstDate, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
+          const timeSlot = weekSchedule[dayOfWeekKey];
+          
+          return supabase.from("procedure_availability").insert({
+            unit_id: selectedUnit,
+            day_of_week: dbDay,
+            start_time: timeSlot.startTime,
+            end_time: timeSlot.endTime,
+            procedure_id: "has_procedures", // Flag para indicar que há procedimentos
+          });
+        });
+
+        promises.push(...procedurePromises);
+      }
+
       await Promise.all(promises);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-availabilities"] });
       queryClient.invalidateQueries({ queryKey: ["unit-availabilities"] });
       toast.success("Configuração salva com sucesso!");
       handleReset();
@@ -372,6 +417,9 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
               {currentStep === 4 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold mb-4">Passo 4: Selecione os Dias com Procedimentos (Opcional)</h3>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Marque as datas em que haverá procedimentos disponíveis nesta unidade.
+                  </p>
                   <div className="border rounded-lg p-4">
                     <Calendar
                       mode="multiple"
@@ -387,7 +435,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                           {procedureDates.map((date) => (
                             <span
                               key={date.toISOString()}
-                              className="bg-accent text-white px-2 py-1 rounded text-xs"
+                              className="bg-[hsl(var(--accent))] text-white px-2 py-1 rounded text-xs"
                             >
                               {format(date, "dd/MM/yyyy")}
                             </span>
@@ -395,28 +443,6 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                         </div>
                       </div>
                     )}
-                  </div>
-                  
-                  <div className="mt-4">
-                    <Label>Procedimentos Disponíveis</Label>
-                    <div className="border rounded-lg p-4 mt-2 max-h-[200px] overflow-y-auto">
-                      <div className="space-y-2">
-                        {procedures?.map((procedure) => (
-                          <label
-                            key={procedure.id}
-                            className="flex items-center gap-2 p-2 hover:bg-accent/5 rounded cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedProcedures.includes(procedure.id)}
-                              onChange={() => toggleProcedure(procedure.id)}
-                              className="rounded"
-                            />
-                            <span className="text-sm">{procedure.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
@@ -558,17 +584,25 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                         
                         if (dayAvails.length === 0) return null;
 
+                        // Agrupar por tipo (com/sem procedimento)
+                        const withProcedure = dayAvails.find(a => a.procedure_id);
+                        const withoutProcedure = dayAvails.find(a => !a.procedure_id);
+
                         return (
                           <Card key={day} className="p-4">
                             <div className="flex items-center justify-between">
                               <div className="flex-1">
                                 <p className="font-medium capitalize">{day}</p>
-                                {dayAvails.map((avail, idx) => (
-                                  <p key={idx} className="text-sm text-muted-foreground">
-                                    {avail.start_time} - {avail.end_time}
-                                    {avail.procedure_id && " (com procedimentos)"}
+                                {withoutProcedure && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {withoutProcedure.start_time} - {withoutProcedure.end_time}
                                   </p>
-                                ))}
+                                )}
+                                {withProcedure && (
+                                  <p className="text-sm text-[hsl(var(--accent))]">
+                                    Com procedimentos disponíveis
+                                  </p>
+                                )}
                               </div>
                               <Button
                                 variant="ghost"
