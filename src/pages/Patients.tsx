@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 export default function Patients() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const queryClient = useQueryClient();
 
@@ -52,6 +54,11 @@ export default function Patients() {
     patient.cpf?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleView = (patient: any) => {
+    setSelectedPatient(patient);
+    setIsViewDialogOpen(true);
+  };
+
   const handleEdit = (patient: any) => {
     setSelectedPatient(patient);
     setIsDialogOpen(true);
@@ -65,6 +72,11 @@ export default function Patients() {
 
   const handleDialogClose = () => {
     setIsDialogOpen(false);
+    setSelectedPatient(null);
+  };
+
+  const handleViewDialogClose = () => {
+    setIsViewDialogOpen(false);
     setSelectedPatient(null);
   };
 
@@ -105,7 +117,11 @@ export default function Patients() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredPatients && filteredPatients.length > 0 ? (
             filteredPatients.map((patient) => (
-              <Card key={patient.id} className="p-6 card-elevated hover:shadow-golden">
+              <Card 
+                key={patient.id} 
+                className="p-6 card-elevated hover:shadow-golden cursor-pointer transition-all"
+                onClick={() => handleView(patient)}
+              >
                 <div className="space-y-3">
                   <div>
                     <h3 className="font-semibold text-lg text-foreground">{patient.name}</h3>
@@ -139,7 +155,10 @@ export default function Patients() {
                       size="sm"
                       variant="outline"
                       className="flex-1 border-accent text-accent hover:bg-accent/10"
-                      onClick={() => handleEdit(patient)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(patient);
+                      }}
                     >
                       <Pencil className="h-3 w-3 mr-1" />
                       Editar
@@ -148,7 +167,10 @@ export default function Patients() {
                       size="sm"
                       variant="outline"
                       className="border-destructive text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDelete(patient.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(patient.id);
+                      }}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -172,6 +194,147 @@ export default function Patients() {
             </DialogTitle>
           </DialogHeader>
           <PatientForm patient={selectedPatient} onSuccess={handleDialogClose} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isViewDialogOpen} onOpenChange={handleViewDialogClose}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Paciente</DialogTitle>
+          </DialogHeader>
+          {selectedPatient && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Nome Completo</Label>
+                  <p className="font-medium">{selectedPatient.name}</p>
+                </div>
+                {selectedPatient.cpf && (
+                  <div>
+                    <Label className="text-muted-foreground">CPF</Label>
+                    <p className="font-medium">{selectedPatient.cpf}</p>
+                  </div>
+                )}
+                {selectedPatient.rg && (
+                  <div>
+                    <Label className="text-muted-foreground">RG</Label>
+                    <p className="font-medium">{selectedPatient.rg}</p>
+                  </div>
+                )}
+                {selectedPatient.birth_date && (
+                  <div>
+                    <Label className="text-muted-foreground">Data de Nascimento</Label>
+                    <p className="font-medium">{new Date(selectedPatient.birth_date).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                )}
+                {selectedPatient.email && (
+                  <div>
+                    <Label className="text-muted-foreground">E-mail</Label>
+                    <p className="font-medium">{selectedPatient.email}</p>
+                  </div>
+                )}
+                {selectedPatient.phone && (
+                  <div>
+                    <Label className="text-muted-foreground">Telefone</Label>
+                    <p className="font-medium">{selectedPatient.phone}</p>
+                  </div>
+                )}
+              </div>
+
+              {(selectedPatient.address || selectedPatient.city || selectedPatient.state) && (
+                <div>
+                  <h3 className="font-semibold mb-3 text-lg">Endereço</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedPatient.address && (
+                      <div>
+                        <Label className="text-muted-foreground">Logradouro</Label>
+                        <p className="font-medium">{selectedPatient.address}</p>
+                      </div>
+                    )}
+                    {selectedPatient.address_number && (
+                      <div>
+                        <Label className="text-muted-foreground">Número</Label>
+                        <p className="font-medium">{selectedPatient.address_number}</p>
+                      </div>
+                    )}
+                    {selectedPatient.neighborhood && (
+                      <div>
+                        <Label className="text-muted-foreground">Bairro</Label>
+                        <p className="font-medium">{selectedPatient.neighborhood}</p>
+                      </div>
+                    )}
+                    {selectedPatient.city && (
+                      <div>
+                        <Label className="text-muted-foreground">Cidade</Label>
+                        <p className="font-medium">{selectedPatient.city}</p>
+                      </div>
+                    )}
+                    {selectedPatient.state && (
+                      <div>
+                        <Label className="text-muted-foreground">Estado</Label>
+                        <p className="font-medium">{selectedPatient.state}</p>
+                      </div>
+                    )}
+                    {selectedPatient.zip_code && (
+                      <div>
+                        <Label className="text-muted-foreground">CEP</Label>
+                        <p className="font-medium">{selectedPatient.zip_code}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedPatient.marital_status && (
+                  <div>
+                    <Label className="text-muted-foreground">Estado Civil</Label>
+                    <p className="font-medium capitalize">{selectedPatient.marital_status.replace('_', ' ')}</p>
+                  </div>
+                )}
+                {selectedPatient.occupation && (
+                  <div>
+                    <Label className="text-muted-foreground">Profissão</Label>
+                    <p className="font-medium">{selectedPatient.occupation}</p>
+                  </div>
+                )}
+                {selectedPatient.insurance && (
+                  <div>
+                    <Label className="text-muted-foreground">Convênio</Label>
+                    <p className="font-medium">{selectedPatient.insurance}</p>
+                  </div>
+                )}
+              </div>
+
+              {selectedPatient.consultation_reason && (
+                <div>
+                  <Label className="text-muted-foreground">Motivo da Consulta</Label>
+                  <p className="font-medium">{selectedPatient.consultation_reason}</p>
+                </div>
+              )}
+
+              {selectedPatient.notes && (
+                <div>
+                  <Label className="text-muted-foreground">Observações</Label>
+                  <p className="font-medium">{selectedPatient.notes}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsViewDialogOpen(false);
+                    handleEdit(selectedPatient);
+                  }}
+                  className="border-accent text-accent hover:bg-accent/10"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
