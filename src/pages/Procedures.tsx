@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Syringe, Edit, Trash2, Clock, FileText } from "lucide-react";
+import { Plus, Search, Syringe, Edit, Trash2, Clock, FileText, DollarSign } from "lucide-react";
 import { ProcedureForm } from "@/components/procedures/ProcedureForm";
 import { toast } from "sonner";
 import {
@@ -155,6 +155,41 @@ export default function Procedures() {
                       <Clock className="h-4 w-4" />
                       <span>{procedure.duration_minutes} minutos</span>
                     </div>
+
+                    {(procedure.price_fixed || procedure.price_per_ml || procedure.price_card) && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <DollarSign className="h-4 w-4" />
+                          <span>Valores:</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 pl-6 text-sm">
+                          {procedure.price_fixed && (
+                            <div>
+                              <div className="text-xs text-muted-foreground">Fixo</div>
+                              <div className="font-medium text-accent">
+                                R$ {procedure.price_fixed.toFixed(2)}
+                              </div>
+                            </div>
+                          )}
+                          {procedure.price_per_ml && (
+                            <div>
+                              <div className="text-xs text-muted-foreground">Por ML</div>
+                              <div className="font-medium text-accent">
+                                R$ {procedure.price_per_ml.toFixed(2)}
+                              </div>
+                            </div>
+                          )}
+                          {procedure.price_card && (
+                            <div>
+                              <div className="text-xs text-muted-foreground">Cartão</div>
+                              <div className="font-medium text-accent">
+                                R$ {procedure.price_card.toFixed(2)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {procedure.required_exams && procedure.required_exams.length > 0 && (
                       <div className="space-y-2">

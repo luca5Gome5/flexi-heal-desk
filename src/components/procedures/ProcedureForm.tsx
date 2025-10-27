@@ -29,6 +29,9 @@ interface ProcedureFormProps {
     required_exams: string[] | null;
     duration_minutes: number | null;
     status: boolean | null;
+    price_fixed: number | null;
+    price_per_ml: number | null;
+    price_card: number | null;
   } | null;
 }
 
@@ -40,6 +43,9 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
     description: "",
     duration_minutes: 60,
     status: true,
+    price_fixed: "",
+    price_per_ml: "",
+    price_card: "",
   });
   const [requiredExams, setRequiredExams] = useState<string[]>([]);
   const [newExam, setNewExam] = useState("");
@@ -52,6 +58,9 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         description: procedure.description || "",
         duration_minutes: procedure.duration_minutes || 60,
         status: procedure.status ?? true,
+        price_fixed: procedure.price_fixed ? procedure.price_fixed.toString() : "",
+        price_per_ml: procedure.price_per_ml ? procedure.price_per_ml.toString() : "",
+        price_card: procedure.price_card ? procedure.price_card.toString() : "",
       });
       setRequiredExams(procedure.required_exams || []);
     } else {
@@ -60,6 +69,9 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         description: "",
         duration_minutes: 60,
         status: true,
+        price_fixed: "",
+        price_per_ml: "",
+        price_card: "",
       });
       setRequiredExams([]);
     }
@@ -82,7 +94,13 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
 
     try {
       const dataToSave = {
-        ...formData,
+        name: formData.name,
+        description: formData.description,
+        duration_minutes: formData.duration_minutes,
+        status: formData.status,
+        price_fixed: formData.price_fixed ? parseFloat(formData.price_fixed) : null,
+        price_per_ml: formData.price_per_ml ? parseFloat(formData.price_per_ml) : null,
+        price_card: formData.price_card ? parseFloat(formData.price_card) : null,
         required_exams: requiredExams.length > 0 ? requiredExams : null,
       };
 
@@ -165,6 +183,56 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
               }
               className="rounded-lg border-border focus-visible:ring-accent"
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="price_fixed">Valor Fixo (R$)</Label>
+              <Input
+                id="price_fixed"
+                type="number"
+                min={0}
+                step={0.01}
+                value={formData.price_fixed}
+                onChange={(e) =>
+                  setFormData({ ...formData, price_fixed: e.target.value })
+                }
+                placeholder="0.00"
+                className="rounded-lg border-border focus-visible:ring-accent"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="price_per_ml">Valor por ML (R$)</Label>
+              <Input
+                id="price_per_ml"
+                type="number"
+                min={0}
+                step={0.01}
+                value={formData.price_per_ml}
+                onChange={(e) =>
+                  setFormData({ ...formData, price_per_ml: e.target.value })
+                }
+                placeholder="0.00"
+                className="rounded-lg border-border focus-visible:ring-accent"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="price_card">Valor no Cartão (R$)</Label>
+              <Input
+                id="price_card"
+                type="number"
+                min={0}
+                step={0.01}
+                value={formData.price_card}
+                onChange={(e) =>
+                  setFormData({ ...formData, price_card: e.target.value })
+                }
+                placeholder="0.00"
+                className="rounded-lg border-border focus-visible:ring-accent"
+              />
+            </div>
           </div>
 
           <div className="space-y-3">

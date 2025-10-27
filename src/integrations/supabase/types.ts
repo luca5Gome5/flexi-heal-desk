@@ -340,6 +340,9 @@ export type Database = {
           duration_minutes: number | null
           id: string
           name: string
+          price_card: number | null
+          price_fixed: number | null
+          price_per_ml: number | null
           required_exams: string[] | null
           status: boolean | null
           updated_at: string | null
@@ -350,6 +353,9 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           name: string
+          price_card?: number | null
+          price_fixed?: number | null
+          price_per_ml?: number | null
           required_exams?: string[] | null
           status?: boolean | null
           updated_at?: string | null
@@ -360,6 +366,9 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           name?: string
+          price_card?: number | null
+          price_fixed?: number | null
+          price_per_ml?: number | null
           required_exams?: string[] | null
           status?: boolean | null
           updated_at?: string | null
