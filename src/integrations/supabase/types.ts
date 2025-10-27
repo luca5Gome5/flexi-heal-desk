@@ -339,10 +339,11 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           id: string
+          max_installments: number | null
           name: string
           price_card: number | null
-          price_fixed: number | null
-          price_per_ml: number | null
+          price_cash: number | null
+          pricing_type: string | null
           required_exams: string[] | null
           status: boolean | null
           updated_at: string | null
@@ -352,10 +353,11 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          max_installments?: number | null
           name: string
           price_card?: number | null
-          price_fixed?: number | null
-          price_per_ml?: number | null
+          price_cash?: number | null
+          pricing_type?: string | null
           required_exams?: string[] | null
           status?: boolean | null
           updated_at?: string | null
@@ -365,10 +367,11 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          max_installments?: number | null
           name?: string
           price_card?: number | null
-          price_fixed?: number | null
-          price_per_ml?: number | null
+          price_cash?: number | null
+          pricing_type?: string | null
           required_exams?: string[] | null
           status?: boolean | null
           updated_at?: string | null
