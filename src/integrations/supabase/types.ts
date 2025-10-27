@@ -224,6 +224,7 @@ export type Database = {
           created_at: string | null
           id: string
           message_body: string
+          procedure_id: string | null
           tags: string[] | null
           title: string
           updated_at: string | null
@@ -233,6 +234,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           message_body: string
+          procedure_id?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string | null
@@ -242,11 +244,20 @@ export type Database = {
           created_at?: string | null
           id?: string
           message_body?: string
+          procedure_id?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "message_templates_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patients: {
         Row: {
