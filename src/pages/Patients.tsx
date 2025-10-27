@@ -1,13 +1,24 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Plus, Search, Phone, Mail } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { PatientForm } from "@/components/patients/PatientForm";
+import { Plus, Search, Phone, Mail, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Patients() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const queryClient = useQueryClient();
 
   const { data: patients, isLoading } = useQuery({
     queryKey: ["patients"],
@@ -22,10 +33,40 @@ export default function Patients() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("patients").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+      toast.success("Paciente excluído com sucesso!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao excluir paciente: " + error.message);
+    },
+  });
+
   const filteredPatients = patients?.filter((patient) =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.cpf?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleEdit = (patient: any) => {
+    setSelectedPatient(patient);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Tem certeza que deseja excluir este paciente?")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setSelectedPatient(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -34,7 +75,10 @@ export default function Patients() {
           <h1 className="text-3xl font-bold text-foreground mb-2">Pacientes</h1>
           <p className="text-muted-foreground">Gerencie o cadastro de pacientes</p>
         </div>
-        <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-golden">
+        <Button
+          className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-golden"
+          onClick={() => setIsDialogOpen(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Novo Paciente
         </Button>
@@ -91,8 +135,22 @@ export default function Patients() {
                   )}
 
                   <div className="flex gap-2 pt-2">
-                    <Button size="sm" variant="outline" className="flex-1 border-accent text-accent hover:bg-accent/10">
-                      Ver Detalhes
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 border-accent text-accent hover:bg-accent/10"
+                      onClick={() => handleEdit(patient)}
+                    >
+                      <Pencil className="h-3 w-3 mr-1" />
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-destructive text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDelete(patient.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
                 </div>
@@ -105,6 +163,17 @@ export default function Patients() {
           )}
         </div>
       )}
+
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedPatient ? "Editar Paciente" : "Novo Paciente"}
+            </DialogTitle>
+          </DialogHeader>
+          <PatientForm patient={selectedPatient} onSuccess={handleDialogClose} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

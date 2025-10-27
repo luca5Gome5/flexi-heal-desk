@@ -262,48 +262,66 @@ export type Database = {
       patients: {
         Row: {
           address: string | null
+          address_number: string | null
           birth_date: string | null
           city: string | null
+          consultation_reason: string | null
           cpf: string | null
           created_at: string | null
           email: string | null
           id: string
           insurance: string | null
+          marital_status: string | null
           name: string
+          neighborhood: string | null
           notes: string | null
+          occupation: string | null
           phone: string | null
+          rg: string | null
           state: string | null
           updated_at: string | null
           zip_code: string | null
         }
         Insert: {
           address?: string | null
+          address_number?: string | null
           birth_date?: string | null
           city?: string | null
+          consultation_reason?: string | null
           cpf?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           insurance?: string | null
+          marital_status?: string | null
           name: string
+          neighborhood?: string | null
           notes?: string | null
+          occupation?: string | null
           phone?: string | null
+          rg?: string | null
           state?: string | null
           updated_at?: string | null
           zip_code?: string | null
         }
         Update: {
           address?: string | null
+          address_number?: string | null
           birth_date?: string | null
           city?: string | null
+          consultation_reason?: string | null
           cpf?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           insurance?: string | null
+          marital_status?: string | null
           name?: string
+          neighborhood?: string | null
           notes?: string | null
+          occupation?: string | null
           phone?: string | null
+          rg?: string | null
           state?: string | null
           updated_at?: string | null
           zip_code?: string | null
