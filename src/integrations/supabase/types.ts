@@ -338,6 +338,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           duration_minutes: number | null
+          duration_unit: string | null
           id: string
           max_installments: number | null
           name: string
@@ -352,6 +353,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           duration_minutes?: number | null
+          duration_unit?: string | null
           id?: string
           max_installments?: number | null
           name: string
@@ -366,6 +368,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           duration_minutes?: number | null
+          duration_unit?: string | null
           id?: string
           max_installments?: number | null
           name?: string

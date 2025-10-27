@@ -28,6 +28,7 @@ interface ProcedureFormProps {
     description: string | null;
     required_exams: string[] | null;
     duration_minutes: number | null;
+    duration_unit: string | null;
     status: boolean | null;
     pricing_type: string | null;
     price_cash: number | null;
@@ -43,6 +44,7 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
     name: "",
     description: "",
     duration_minutes: 60,
+    duration_unit: "minutes",
     status: true,
     pricing_type: "",
     price_cash: "",
@@ -59,6 +61,7 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         name: procedure.name || "",
         description: procedure.description || "",
         duration_minutes: procedure.duration_minutes || 60,
+        duration_unit: procedure.duration_unit || "minutes",
         status: procedure.status ?? true,
         pricing_type: procedure.pricing_type || "",
         price_cash: procedure.price_cash ? procedure.price_cash.toString() : "",
@@ -71,6 +74,7 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         name: "",
         description: "",
         duration_minutes: 60,
+        duration_unit: "minutes",
         status: true,
         pricing_type: "",
         price_cash: "",
@@ -101,6 +105,7 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         name: formData.name,
         description: formData.description,
         duration_minutes: formData.duration_minutes,
+        duration_unit: formData.duration_unit,
         status: formData.status,
         pricing_type: formData.pricing_type || null,
         price_cash: formData.price_cash ? parseFloat(formData.price_cash) : null,
@@ -175,19 +180,37 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="duration">Duração (minutos)</Label>
-            <Input
-              id="duration"
-              type="number"
-              min={15}
-              step={15}
-              value={formData.duration_minutes}
-              onChange={(e) =>
-                setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })
-              }
-              className="rounded-lg border-border focus-visible:ring-accent"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="duration">Duração</Label>
+              <Input
+                id="duration"
+                type="number"
+                min={1}
+                value={formData.duration_minutes}
+                onChange={(e) =>
+                  setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 1 })
+                }
+                className="rounded-lg border-border focus-visible:ring-accent"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="duration_unit">Unidade</Label>
+              <Select
+                value={formData.duration_unit}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, duration_unit: value })
+                }
+              >
+                <SelectTrigger className="rounded-lg border-border focus-visible:ring-accent">
+                  <SelectValue placeholder="Selecione a unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="minutes">Minutos</SelectItem>
+                  <SelectItem value="hours">Horas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-4">

@@ -153,7 +153,10 @@ export default function Procedures() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      <span>{procedure.duration_minutes} minutos</span>
+                      <span>
+                        {procedure.duration_minutes}{" "}
+                        {procedure.duration_unit === "hours" ? "hora(s)" : "minuto(s)"}
+                      </span>
                     </div>
 
                     {procedure.pricing_type && (
