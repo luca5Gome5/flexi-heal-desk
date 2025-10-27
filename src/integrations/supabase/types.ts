@@ -181,6 +181,7 @@ export type Database = {
           file_url: string | null
           id: string
           media_type: string
+          procedure_id: string | null
           tags: string[] | null
           title: string
           updated_at: string | null
@@ -191,6 +192,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           media_type: string
+          procedure_id?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string | null
@@ -201,11 +203,20 @@ export type Database = {
           file_url?: string | null
           id?: string
           media_type?: string
+          procedure_id?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "media_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       message_templates: {
         Row: {
