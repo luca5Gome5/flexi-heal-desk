@@ -46,10 +46,6 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
     duration_minutes: 60,
     duration_unit: "minutes",
     status: true,
-    pricing_type: "",
-    price_cash: "",
-    price_card: "",
-    max_installments: 1,
   });
   const [requiredExams, setRequiredExams] = useState<string[]>([]);
   const [newExam, setNewExam] = useState("");
@@ -63,10 +59,6 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         duration_minutes: procedure.duration_minutes || 60,
         duration_unit: procedure.duration_unit || "minutes",
         status: procedure.status ?? true,
-        pricing_type: procedure.pricing_type || "",
-        price_cash: procedure.price_cash ? procedure.price_cash.toString() : "",
-        price_card: procedure.price_card ? procedure.price_card.toString() : "",
-        max_installments: procedure.max_installments || 1,
       });
       setRequiredExams(procedure.required_exams || []);
     } else {
@@ -76,10 +68,6 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         duration_minutes: 60,
         duration_unit: "minutes",
         status: true,
-        pricing_type: "",
-        price_cash: "",
-        price_card: "",
-        max_installments: 1,
       });
       setRequiredExams([]);
     }
@@ -107,10 +95,6 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         duration_minutes: formData.duration_minutes,
         duration_unit: formData.duration_unit,
         status: formData.status,
-        pricing_type: formData.pricing_type || null,
-        price_cash: formData.price_cash ? parseFloat(formData.price_cash) : null,
-        price_card: formData.price_card ? parseFloat(formData.price_card) : null,
-        max_installments: formData.max_installments || 1,
         required_exams: requiredExams.length > 0 ? requiredExams : null,
       };
 
@@ -211,81 +195,6 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="pricing_type">Tipo de Precificação</Label>
-              <Select
-                value={formData.pricing_type}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, pricing_type: value })
-                }
-              >
-                <SelectTrigger className="rounded-lg border-border focus-visible:ring-accent">
-                  <SelectValue placeholder="Selecione o tipo de preço" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixed">Valor Fixo</SelectItem>
-                  <SelectItem value="per_ml">Valor por ML</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.pricing_type && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price_cash">
-                    Valor à Vista (R$) {formData.pricing_type === 'per_ml' && '/ ML'}
-                  </Label>
-                  <Input
-                    id="price_cash"
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={formData.price_cash}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price_cash: e.target.value })
-                    }
-                    placeholder="0.00"
-                    className="rounded-lg border-border focus-visible:ring-accent"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="price_card">
-                    Valor no Cartão (R$) {formData.pricing_type === 'per_ml' && '/ ML'}
-                  </Label>
-                  <Input
-                    id="price_card"
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={formData.price_card}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price_card: e.target.value })
-                    }
-                    placeholder="0.00"
-                    className="rounded-lg border-border focus-visible:ring-accent"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="max_installments">Máximo de Parcelas</Label>
-                  <Input
-                    id="max_installments"
-                    type="number"
-                    min={1}
-                    max={12}
-                    value={formData.max_installments}
-                    onChange={(e) =>
-                      setFormData({ ...formData, max_installments: parseInt(e.target.value) || 1 })
-                    }
-                    className="rounded-lg border-border focus-visible:ring-accent"
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="space-y-3">

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Syringe, Edit, Trash2, Clock, FileText, DollarSign } from "lucide-react";
+import { Plus, Search, Syringe, Edit, Trash2, Clock, FileText } from "lucide-react";
 import { ProcedureForm } from "@/components/procedures/ProcedureForm";
 import { toast } from "sonner";
 import {
@@ -158,45 +158,6 @@ export default function Procedures() {
                         {procedure.duration_unit === "hours" ? "hora(s)" : "minuto(s)"}
                       </span>
                     </div>
-
-                    {procedure.pricing_type && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                          <DollarSign className="h-4 w-4" />
-                          <span>
-                            {procedure.pricing_type === 'fixed' ? 'Valor Fixo' : 'Valor por ML'}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 pl-6 text-sm">
-                          {procedure.price_cash && (
-                            <div>
-                              <div className="text-xs text-muted-foreground">À Vista</div>
-                              <div className="font-medium text-accent">
-                                R$ {procedure.price_cash.toFixed(2)}
-                                {procedure.pricing_type === 'per_ml' && '/ML'}
-                              </div>
-                            </div>
-                          )}
-                          {procedure.price_card && (
-                            <div>
-                              <div className="text-xs text-muted-foreground">Cartão</div>
-                              <div className="font-medium text-accent">
-                                R$ {procedure.price_card.toFixed(2)}
-                                {procedure.pricing_type === 'per_ml' && '/ML'}
-                              </div>
-                            </div>
-                          )}
-                          {procedure.max_installments && procedure.max_installments > 1 && (
-                            <div>
-                              <div className="text-xs text-muted-foreground">Parcelas</div>
-                              <div className="font-medium text-accent">
-                                até {procedure.max_installments}x
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
 
                     {procedure.required_exams && procedure.required_exams.length > 0 && (
                       <div className="space-y-2">
