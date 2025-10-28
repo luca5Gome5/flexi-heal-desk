@@ -533,10 +533,52 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      available_time_slots: {
+        Row: {
+          availability_date: string | null
+          end_time: string | null
+          procedure_id: string | null
+          slot_duration_minutes: number | null
+          start_time: string | null
+          unit_id: string | null
+          unit_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedure_availability_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedure_availability_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      generate_time_slots: {
+        Args: {
+          end_time_param: string
+          interval_minutes?: number
+          start_time_param: string
+        }
+        Returns: {
+          slot_end: string
+          slot_start: string
+        }[]
+      }
+      get_brazilian_holidays: {
+        Args: { year_param: number }
+        Returns: {
+          holiday_date: string
+        }[]
+      }
     }
     Enums: {
       appointment_status:
