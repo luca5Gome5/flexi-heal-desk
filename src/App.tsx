@@ -15,6 +15,7 @@ import Procedures from "./pages/Procedures";
 import Media from "./pages/Media";
 import Messages from "./pages/Messages";
 import Schedule from "./pages/Schedule";
+import Kanban from "./pages/Kanban";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
                   <Route path="/doctors" element={<Doctors />} />
                   <Route path="/procedures" element={<Procedures />} />
                   <Route path="/calendar" element={<Schedule />} />
+                  <Route path="/kanban" element={<Kanban />} />
                   <Route path="/media" element={<Media />} />
                   <Route path="/messages" element={<Messages />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
