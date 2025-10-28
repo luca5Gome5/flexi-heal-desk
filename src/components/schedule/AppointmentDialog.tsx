@@ -42,6 +42,7 @@ const appointmentSchema = z.object({
   is_procedure: z.boolean().default(false),
   status: z.enum(["scheduled", "confirmed", "completed", "cancelled", "no_show"]).default("scheduled"),
   notes: z.string().optional(),
+  amount_paid: z.string().optional(),
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -72,6 +73,7 @@ export const AppointmentDialog = ({
       is_procedure: false,
       status: "scheduled",
       notes: "",
+      amount_paid: "",
     },
   });
 
@@ -88,6 +90,7 @@ export const AppointmentDialog = ({
         is_procedure: appointment.is_procedure || false,
         status: appointment.status || "scheduled",
         notes: appointment.notes || "",
+        amount_paid: appointment.amount_paid?.toString() || "",
       });
     } else {
       form.reset({
@@ -101,6 +104,7 @@ export const AppointmentDialog = ({
         is_procedure: false,
         status: "scheduled",
         notes: "",
+        amount_paid: "",
       });
     }
   }, [appointment, form]);
@@ -170,6 +174,7 @@ export const AppointmentDialog = ({
         is_procedure: values.is_procedure,
         status: values.status,
         notes: values.notes || null,
+        amount_paid: values.amount_paid ? parseFloat(values.amount_paid) : null,
       };
 
       // Validar conflitos de horário
@@ -437,6 +442,25 @@ export const AppointmentDialog = ({
                   <FormLabel>Observações</FormLabel>
                   <FormControl>
                     <Textarea {...field} rows={3} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="amount_paid"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Valor Pago (R$)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="0.00"
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

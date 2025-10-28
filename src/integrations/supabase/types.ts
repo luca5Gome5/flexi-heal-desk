@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          amount_paid: number | null
           appointment_date: string
           created_at: string | null
           doctor_id: string | null
@@ -31,6 +32,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          amount_paid?: number | null
           appointment_date: string
           created_at?: string | null
           doctor_id?: string | null
@@ -46,6 +48,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          amount_paid?: number | null
           appointment_date?: string
           created_at?: string | null
           doctor_id?: string | null
@@ -141,6 +144,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chat_messages: {
+        Row: {
+          active: boolean | null
+          bot_message: string | null
+          conversation_id: string | null
+          created_at: string | null
+          id: number
+          phone: string | null
+          user_message: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          bot_message?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: number
+          phone?: string | null
+          user_message?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          bot_message?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: number
+          phone?: string | null
+          user_message?: string | null
+        }
+        Relationships: []
+      }
+      chats: {
+        Row: {
+          ai_service: string | null
+          conversation_id: string | null
+          created_at: string | null
+          email: string | null
+          id: number
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_service?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: number
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_service?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: number
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       doctor_units: {
         Row: {

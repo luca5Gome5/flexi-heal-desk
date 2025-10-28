@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, User, Calendar, Clock, MapPin, FileText } from "lucide-react";
+import { Pencil, Trash2, User, Calendar, Clock, MapPin, FileText, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -166,6 +166,22 @@ export const AppointmentDetails = ({
                 </div>
               </div>
             </div>
+
+            {/* Amount Paid */}
+            {appointment.amount_paid && (
+              <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
+                <DollarSign className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Valor Pago</p>
+                  <p className="font-semibold text-lg">
+                    {new Intl.NumberFormat('pt-BR', { 
+                      style: 'currency', 
+                      currency: 'BRL' 
+                    }).format(appointment.amount_paid)}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 justify-end pt-4 border-t">
