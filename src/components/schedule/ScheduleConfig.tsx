@@ -156,8 +156,12 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     queryKey: ["all-availabilities"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("procedure_availability")
-        .select("*");
+        .from("availabilities")
+        .select(`
+          *,
+          units (name),
+          procedures (name)
+        `);
       if (error) throw error;
       return data;
     },
@@ -168,7 +172,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     queryFn: async () => {
       if (!viewingUnit) return [];
       const { data, error } = await supabase
-        .from("procedure_availability")
+        .from("availabilities")
         .select("*")
         .eq("unit_id", viewingUnit);
       if (error) throw error;
@@ -183,75 +187,58 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
         throw new Error("Selecione uma unidade e pelo menos uma data de atendimento");
       }
 
-      // Agrupar datas por dia da semana
-      const datesByDayOfWeek = new Map<DbDayOfWeek, Date[]>();
-      const procedureDatesByDay = new Set<DbDayOfWeek>();
-      
-      attendanceDates.forEach((date) => {
+      // Criar um Set com as datas de procedimento para busca rápida
+      const procedureDateStrings = new Set(
+        procedureDates.map(date => format(date, "yyyy-MM-dd"))
+      );
+
+      // Para cada data de atendimento, criar registros na tabela availabilities
+      const promises = attendanceDates.flatMap((date) => {
+        const dateString = format(date, "yyyy-MM-dd");
         const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
-        const dbDayOfWeek = dayOfWeekMapping[dayOfWeekKey];
-        
-        if (!datesByDayOfWeek.has(dbDayOfWeek)) {
-          datesByDayOfWeek.set(dbDayOfWeek, []);
-        }
-        datesByDayOfWeek.get(dbDayOfWeek)!.push(date);
-      });
-
-      // Marcar quais dias da semana têm procedimentos
-      procedureDates.forEach((date) => {
-        const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
-        const dbDayOfWeek = dayOfWeekMapping[dayOfWeekKey];
-        procedureDatesByDay.add(dbDayOfWeek);
-      });
-
-      // Primeiro, buscar o primeiro procedimento ativo para usar como referência
-      const { data: firstProcedure } = await supabase
-        .from("procedures")
-        .select("id")
-        .eq("status", true)
-        .limit(1)
-        .single();
-
-      // Para cada dia da semana único, criar availabilities
-      const promises = Array.from(datesByDayOfWeek.entries()).flatMap(([dbDay, dates]) => {
-        const firstDate = dates[0];
-        const dayOfWeekKey = format(firstDate, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
         const timeSlot = weekSchedule[dayOfWeekKey];
-        const hasProcedures = procedureDatesByDay.has(dbDay);
+        const isProcedureDay = procedureDateStrings.has(dateString);
         
-        // Se tem procedimentos, criar dois registros: um sem procedure_id e um com
-        if (hasProcedures && firstProcedure) {
-          return [
-            supabase.from("procedure_availability").insert({
-              unit_id: selectedUnit,
-              day_of_week: dbDay,
-              start_time: timeSlot.startTime,
-              end_time: timeSlot.endTime,
-              procedure_id: null,
-            }),
-            supabase.from("procedure_availability").insert({
-              unit_id: selectedUnit,
-              day_of_week: dbDay,
-              start_time: timeSlot.startTime,
-              end_time: timeSlot.endTime,
-              procedure_id: firstProcedure.id,
-            })
-          ];
-        }
-        
-        // Senão, criar apenas o registro normal
-        return [
-          supabase.from("procedure_availability").insert({
+        const insertPromises = [];
+
+        // Sempre criar um registro de disponibilidade geral (sem procedure_id)
+        insertPromises.push(
+          supabase.from("availabilities").insert({
             unit_id: selectedUnit,
-            day_of_week: dbDay,
+            availability_date: dateString,
             start_time: timeSlot.startTime,
             end_time: timeSlot.endTime,
+            is_procedure_day: isProcedureDay,
             procedure_id: null,
           })
-        ];
+        );
+
+        // Se é dia de procedimento e há procedimentos selecionados, criar registros para cada procedimento
+        if (isProcedureDay && selectedProcedures.length > 0) {
+          selectedProcedures.forEach(procedureId => {
+            insertPromises.push(
+              supabase.from("availabilities").insert({
+                unit_id: selectedUnit,
+                availability_date: dateString,
+                start_time: timeSlot.startTime,
+                end_time: timeSlot.endTime,
+                is_procedure_day: true,
+                procedure_id: procedureId,
+              })
+            );
+          });
+        }
+
+        return insertPromises;
       });
 
-      await Promise.all(promises);
+      const results = await Promise.all(promises);
+      
+      // Verificar se houve erros
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw new Error(errors[0].error.message);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-availabilities"] });
@@ -267,7 +254,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("procedure_availability")
+        .from("availabilities")
         .delete()
         .eq("id", id);
       if (error) throw error;
@@ -303,11 +290,11 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
 
   const getUnitAvailabilitySummary = (unitId: string) => {
     const unitAvails = allAvailabilities?.filter(a => a.unit_id === unitId) || [];
-    const daysWithService = new Set(unitAvails.map(a => a.day_of_week));
-    const daysWithProcedures = new Set(
-      unitAvails.filter(a => a.procedure_id).map(a => a.day_of_week)
+    const uniqueDates = new Set(unitAvails.map(a => a.availability_date));
+    const datesWithProcedures = new Set(
+      unitAvails.filter(a => a.procedure_id).map(a => a.availability_date)
     );
-    return { daysWithService, daysWithProcedures, availabilities: unitAvails };
+    return { daysWithService: uniqueDates, daysWithProcedures: datesWithProcedures, availabilities: unitAvails };
   };
 
   const selectAllBusinessDays = () => {
@@ -767,12 +754,15 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                     <div className="grid grid-cols-7 gap-2">
                       {daysOfWeek.map((day) => {
                         const dbDay = dayOfWeekMapping[day];
-                        const hasService = viewingAvailabilities.some(
-                          a => a.day_of_week === dbDay && !a.procedure_id
-                        );
-                        const hasProcedure = viewingAvailabilities.some(
-                          a => a.day_of_week === dbDay && a.procedure_id
-                        );
+                        // Agrupar disponibilidades por dia da semana a partir das datas
+                        const dayAvails = viewingAvailabilities?.filter(a => {
+                          const date = new Date(a.availability_date + 'T00:00:00');
+                          const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
+                          return dayOfWeekMapping[dayOfWeekKey] === dbDay;
+                        }) || [];
+                        
+                        const hasService = dayAvails.some(a => !a.procedure_id);
+                        const hasProcedure = dayAvails.some(a => a.procedure_id);
                         
                         let bgColor = "bg-red-500/20 border-red-500";
                         if (hasProcedure) {
@@ -797,13 +787,17 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                       <h4 className="font-semibold">Horários de Atendimento</h4>
                       {daysOfWeek.map((day) => {
                         const dbDay = dayOfWeekMapping[day];
-                        const dayAvails = viewingAvailabilities.filter(
-                          a => a.day_of_week === dbDay
-                        );
+                        // Agrupar disponibilidades por dia da semana a partir das datas
+                        const dayAvails = viewingAvailabilities?.filter(a => {
+                          const date = new Date(a.availability_date + 'T00:00:00');
+                          const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
+                          return dayOfWeekMapping[dayOfWeekKey] === dbDay;
+                        }) || [];
                         
                         if (dayAvails.length === 0) return null;
 
-                        // Agrupar por tipo (com/sem procedimento)
+                        // Pegar os horários do primeiro registro do dia
+                        const firstAvail = dayAvails[0];
                         const withProcedure = dayAvails.find(a => a.procedure_id);
                         const withoutProcedure = dayAvails.find(a => !a.procedure_id);
 

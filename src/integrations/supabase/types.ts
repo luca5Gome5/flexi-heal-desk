@@ -91,6 +91,57 @@ export type Database = {
           },
         ]
       }
+      availabilities: {
+        Row: {
+          availability_date: string
+          created_at: string | null
+          end_time: string
+          id: string
+          is_procedure_day: boolean | null
+          procedure_id: string | null
+          start_time: string
+          unit_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          availability_date: string
+          created_at?: string | null
+          end_time: string
+          id?: string
+          is_procedure_day?: boolean | null
+          procedure_id?: string | null
+          start_time: string
+          unit_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          availability_date?: string
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          is_procedure_day?: boolean | null
+          procedure_id?: string | null
+          start_time?: string
+          unit_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availabilities_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availabilities_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doctor_units: {
         Row: {
           created_at: string | null
@@ -545,14 +596,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "procedure_availability_procedure_id_fkey"
+            foreignKeyName: "availabilities_procedure_id_fkey"
             columns: ["procedure_id"]
             isOneToOne: false
             referencedRelation: "procedures"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "procedure_availability_unit_id_fkey"
+            foreignKeyName: "availabilities_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
