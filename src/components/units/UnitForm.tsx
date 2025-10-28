@@ -28,6 +28,7 @@ interface UnitFormProps {
     phone: string | null;
     cnpj: string | null;
     status: boolean | null;
+    consultation_price: number | null;
   } | null;
 }
 
@@ -43,6 +44,7 @@ export function UnitForm({ open, onOpenChange, unit }: UnitFormProps) {
     phone: "",
     cnpj: "",
     status: true,
+    consultation_price: "",
   });
 
   // Update form data when unit prop changes
@@ -57,6 +59,7 @@ export function UnitForm({ open, onOpenChange, unit }: UnitFormProps) {
         phone: unit.phone || "",
         cnpj: unit.cnpj || "",
         status: unit.status ?? true,
+        consultation_price: unit.consultation_price?.toString() || "",
       });
     } else {
       // Reset form for new unit
@@ -69,6 +72,7 @@ export function UnitForm({ open, onOpenChange, unit }: UnitFormProps) {
         phone: "",
         cnpj: "",
         status: true,
+        consultation_price: "",
       });
     }
   }, [unit, open]);
@@ -78,18 +82,23 @@ export function UnitForm({ open, onOpenChange, unit }: UnitFormProps) {
     setLoading(true);
 
     try {
+      const dataToSave = {
+        ...formData,
+        consultation_price: formData.consultation_price ? parseFloat(formData.consultation_price) : null,
+      };
+
       if (unit?.id) {
         // Update existing unit
         const { error } = await supabase
           .from("units")
-          .update(formData)
+          .update(dataToSave)
           .eq("id", unit.id);
 
         if (error) throw error;
         toast.success("Unidade atualizada com sucesso!");
       } else {
         // Create new unit
-        const { error } = await supabase.from("units").insert([formData]);
+        const { error } = await supabase.from("units").insert([dataToSave]);
 
         if (error) throw error;
         toast.success("Unidade criada com sucesso!");
@@ -115,6 +124,7 @@ export function UnitForm({ open, onOpenChange, unit }: UnitFormProps) {
       phone: "",
       cnpj: "",
       status: true,
+      consultation_price: "",
     });
   };
 
@@ -206,16 +216,32 @@ export function UnitForm({ open, onOpenChange, unit }: UnitFormProps) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">Telefone</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="(00) 0000-0000"
-              className="rounded-lg border-border focus-visible:ring-accent"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="(00) 0000-0000"
+                className="rounded-lg border-border focus-visible:ring-accent"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="consultation_price">Valor da Consulta</Label>
+              <Input
+                id="consultation_price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.consultation_price}
+                onChange={(e) => setFormData({ ...formData, consultation_price: e.target.value })}
+                placeholder="0.00"
+                className="rounded-lg border-border focus-visible:ring-accent"
+              />
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">

@@ -441,6 +441,24 @@ export type Database = {
           },
         ]
       }
+      n8n_chat_histories: {
+        Row: {
+          id: number
+          message: Json
+          session_id: string
+        }
+        Insert: {
+          id?: number
+          message: Json
+          session_id: string
+        }
+        Update: {
+          id?: number
+          message?: Json
+          session_id?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           address: string | null
@@ -608,6 +626,7 @@ export type Database = {
           address: string
           city: string | null
           cnpj: string | null
+          consultation_price: number | null
           created_at: string | null
           id: string
           name: string
@@ -621,6 +640,7 @@ export type Database = {
           address: string
           city?: string | null
           cnpj?: string | null
+          consultation_price?: number | null
           created_at?: string | null
           id?: string
           name: string
@@ -634,6 +654,7 @@ export type Database = {
           address?: string
           city?: string | null
           cnpj?: string | null
+          consultation_price?: number | null
           created_at?: string | null
           id?: string
           name?: string

@@ -170,6 +170,17 @@ export default function Units() {
                         <span>{unit.phone}</span>
                       </div>
                     )}
+
+                    {unit.consultation_price && (
+                      <div className="flex items-center gap-2 text-sm font-semibold text-accent">
+                        <span>
+                          Consulta: {new Intl.NumberFormat('pt-BR', { 
+                            style: 'currency', 
+                            currency: 'BRL' 
+                          }).format(unit.consultation_price)}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-2 pt-2 border-t border-border">
