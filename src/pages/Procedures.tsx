@@ -133,7 +133,9 @@ export default function Procedures() {
                       </div>
                       {procedure.description && (
                         <p className="text-sm text-muted-foreground mb-2">
-                          {procedure.description}
+                          {procedure.description.length > 150
+                            ? `${procedure.description.substring(0, 150)}...`
+                            : procedure.description}
                         </p>
                       )}
                     </div>
