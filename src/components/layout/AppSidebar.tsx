@@ -7,8 +7,7 @@ import {
   Stethoscope,
   Syringe,
   Image,
-  MessageSquare,
-  Kanban as KanbanIcon
+  MessageSquare
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,7 +25,6 @@ const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Pacientes", url: "/patients", icon: Users },
   { title: "Agenda", url: "/calendar", icon: Calendar },
-  { title: "Kanban", url: "/kanban", icon: KanbanIcon },
   { title: "Unidades", url: "/units", icon: Building2 },
   { title: "Médicos", url: "/doctors", icon: Stethoscope },
   { title: "Procedimentos", url: "/procedures", icon: Syringe },
