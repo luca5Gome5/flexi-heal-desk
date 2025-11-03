@@ -734,104 +734,96 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
 
                 {viewingAvailabilities && viewingAvailabilities.length > 0 ? (
                   <>
-                    {/* Legenda */}
-                    <div className="flex gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded bg-green-500/20 border-2 border-green-500" />
-                        <span>Com atendimento</span>
+                    {/* Calendário com Datas */}
+                    <div className="space-y-4">
+                      <h4 className="font-semibold">Calendário de Disponibilidades</h4>
+                      <div className="flex justify-center">
+                        <Calendar
+                          mode="multiple"
+                          selected={viewingAvailabilities.map(a => new Date(a.availability_date + 'T00:00:00'))}
+                          modifiers={{
+                            withProcedures: viewingAvailabilities
+                              .filter(a => a.procedure_id)
+                              .map(a => new Date(a.availability_date + 'T00:00:00'))
+                          }}
+                          modifiersClassNames={{
+                            selected: "bg-amber-500 text-white hover:bg-amber-600",
+                            withProcedures: "bg-amber-600 text-white hover:bg-amber-700 font-bold"
+                          }}
+                          className="rounded-md border"
+                        />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded bg-[hsl(var(--accent))]/20 border-2 border-[hsl(var(--accent))]" />
-                        <span>Com procedimentos</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded bg-red-500/20 border-2 border-red-500" />
-                        <span>Sem atendimento</span>
+                      <div className="flex gap-4 text-sm justify-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded bg-amber-500" />
+                          <span>Dias com atendimento</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded bg-amber-600" />
+                          <span>Dias com procedimentos</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Calendário Visual por Dia da Semana */}
-                    <div className="grid grid-cols-7 gap-2">
-                      {daysOfWeek.map((day) => {
-                        const dbDay = dayOfWeekMapping[day];
-                        // Agrupar disponibilidades por dia da semana a partir das datas
-                        const dayAvails = viewingAvailabilities?.filter(a => {
-                          const date = new Date(a.availability_date + 'T00:00:00');
-                          const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
-                          return dayOfWeekMapping[dayOfWeekKey] === dbDay;
-                        }) || [];
-                        
-                        const hasService = dayAvails.some(a => !a.procedure_id);
-                        const hasProcedure = dayAvails.some(a => a.procedure_id);
-                        
-                        let bgColor = "bg-red-500/20 border-red-500";
-                        if (hasProcedure) {
-                          bgColor = "bg-[hsl(var(--accent))]/20 border-[hsl(var(--accent))]";
-                        } else if (hasService) {
-                          bgColor = "bg-green-500/20 border-green-500";
-                        }
-
-                        return (
-                          <Card
-                            key={day}
-                            className={`p-3 text-center border-2 ${bgColor}`}
-                          >
-                            <p className="font-medium text-sm capitalize">{day}</p>
-                          </Card>
-                        );
-                      })}
-                    </div>
-
-                    {/* Horários por Dia da Semana */}
+                    {/* Lista de Disponibilidades por Data */}
                     <div className="space-y-3 mt-6">
-                      <h4 className="font-semibold">Horários de Atendimento</h4>
-                      {daysOfWeek.map((day) => {
-                        const dbDay = dayOfWeekMapping[day];
-                        // Agrupar disponibilidades por dia da semana a partir das datas
-                        const dayAvails = viewingAvailabilities?.filter(a => {
-                          const date = new Date(a.availability_date + 'T00:00:00');
-                          const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
-                          return dayOfWeekMapping[dayOfWeekKey] === dbDay;
-                        }) || [];
-                        
-                        if (dayAvails.length === 0) return null;
+                      <h4 className="font-semibold">Disponibilidades Cadastradas</h4>
+                      {/* Agrupar por data */}
+                      {Array.from(new Set(viewingAvailabilities.map(a => a.availability_date)))
+                        .sort()
+                        .map((dateStr) => {
+                          const dateAvails = viewingAvailabilities.filter(a => a.availability_date === dateStr);
+                          const date = new Date(dateStr + 'T00:00:00');
+                          const dayOfWeekKey = format(date, "EEEE", { locale: ptBR });
+                          const formattedDate = format(date, "dd/MM/yyyy", { locale: ptBR });
+                          const withProcedure = dateAvails.find(a => a.procedure_id);
+                          const withoutProcedure = dateAvails.find(a => !a.procedure_id);
 
-                        // Pegar os horários do primeiro registro do dia
-                        const firstAvail = dayAvails[0];
-                        const withProcedure = dayAvails.find(a => a.procedure_id);
-                        const withoutProcedure = dayAvails.find(a => !a.procedure_id);
-
-                        return (
-                          <Card key={day} className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <p className="font-medium capitalize">{day}</p>
-                                {withoutProcedure && (
-                                  <p className="text-sm text-muted-foreground">
-                                    {withoutProcedure.start_time} - {withoutProcedure.end_time}
+                          return (
+                            <Card key={dateStr} className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className="font-medium capitalize">
+                                    {dayOfWeekKey} - {formattedDate}
                                   </p>
-                                )}
-                                {withProcedure && (
-                                  <p className="text-sm text-[hsl(var(--accent))]">
-                                    Com procedimentos disponíveis
-                                  </p>
-                                )}
+                                  {withoutProcedure && (
+                                    <p className="text-sm text-muted-foreground">
+                                      {withoutProcedure.start_time} - {withoutProcedure.end_time}
+                                    </p>
+                                  )}
+                                  {withProcedure && (
+                                    <p className="text-sm text-amber-600 font-medium">
+                                      Com procedimentos disponíveis
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      // TODO: Implementar edição
+                                      toast.info("Funcionalidade de edição em desenvolvimento");
+                                    }}
+                                  >
+                                    <CalendarDays className="h-4 w-4 text-primary" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      dateAvails.forEach(avail => 
+                                        deleteMutation.mutate(avail.id)
+                                      );
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </div>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  dayAvails.forEach(avail => 
-                                    deleteMutation.mutate(avail.id)
-                                  );
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                          </Card>
-                        );
-                      })}
+                            </Card>
+                          );
+                        })}
                     </div>
                   </>
                 ) : (
