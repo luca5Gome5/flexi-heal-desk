@@ -123,6 +123,10 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     "domingo": { startTime: "08:00", endTime: "12:00" },
   });
   const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
+  const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   const queryClient = useQueryClient();
 
@@ -251,6 +255,27 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ dateStr, startTime, endTime }: { dateStr: string; startTime: string; endTime: string }) => {
+      // Atualizar todos os registros dessa data
+      const { error } = await supabase
+        .from("availabilities")
+        .update({ start_time: startTime, end_time: endTime })
+        .eq("unit_id", viewingUnit)
+        .eq("availability_date", dateStr);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unit-availabilities"] });
+      toast.success("Horário atualizado com sucesso!");
+      setEditingDate(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -277,6 +302,9 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     setProcedureDates([]);
     setProcedureWeekDays([]);
     setSelectedProcedures([]);
+    setEditingDate(null);
+    setSelectedMonth(new Date());
+    setCurrentPage(1);
     setWeekSchedule({
       "segunda-feira": { startTime: "08:00", endTime: "18:00" },
       "terça-feira": { startTime: "08:00", endTime: "18:00" },
@@ -767,63 +795,190 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
 
                     {/* Lista de Disponibilidades por Data */}
                     <div className="space-y-3 mt-6">
-                      <h4 className="font-semibold">Disponibilidades Cadastradas</h4>
-                      {/* Agrupar por data */}
-                      {Array.from(new Set(viewingAvailabilities.map(a => a.availability_date)))
-                        .sort()
-                        .map((dateStr) => {
-                          const dateAvails = viewingAvailabilities.filter(a => a.availability_date === dateStr);
-                          const date = new Date(dateStr + 'T00:00:00');
-                          const dayOfWeekKey = format(date, "EEEE", { locale: ptBR });
-                          const formattedDate = format(date, "dd/MM/yyyy", { locale: ptBR });
-                          const withProcedure = dateAvails.find(a => a.procedure_id);
-                          const withoutProcedure = dateAvails.find(a => !a.procedure_id);
-
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">Disponibilidades Cadastradas</h4>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedMonth(prev => addMonths(prev, -1));
+                              setCurrentPage(1);
+                            }}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm font-medium min-w-[120px] text-center">
+                            {format(selectedMonth, "MMMM yyyy", { locale: ptBR })}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedMonth(prev => addMonths(prev, 1));
+                              setCurrentPage(1);
+                            }}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {(() => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        // Filtrar por mês selecionado e datas futuras
+                        const filteredDates = Array.from(new Set(viewingAvailabilities.map(a => a.availability_date)))
+                          .filter(dateStr => {
+                            const date = new Date(dateStr + 'T00:00:00');
+                            return date >= today &&
+                              date.getMonth() === selectedMonth.getMonth() &&
+                              date.getFullYear() === selectedMonth.getFullYear();
+                          })
+                          .sort();
+                        
+                        // Paginação
+                        const totalPages = Math.ceil(filteredDates.length / itemsPerPage);
+                        const startIndex = (currentPage - 1) * itemsPerPage;
+                        const paginatedDates = filteredDates.slice(startIndex, startIndex + itemsPerPage);
+                        
+                        if (filteredDates.length === 0) {
                           return (
-                            <Card key={dateStr} className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <p className="font-medium capitalize">
-                                    {dayOfWeekKey} - {formattedDate}
-                                  </p>
-                                  {withoutProcedure && (
-                                    <p className="text-sm text-muted-foreground">
-                                      {withoutProcedure.start_time} - {withoutProcedure.end_time}
-                                    </p>
-                                  )}
-                                  {withProcedure && (
-                                    <p className="text-sm text-amber-600 font-medium">
-                                      Com procedimentos disponíveis
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => {
-                                      // TODO: Implementar edição
-                                      toast.info("Funcionalidade de edição em desenvolvimento");
-                                    }}
-                                  >
-                                    <CalendarDays className="h-4 w-4 text-primary" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => {
-                                      dateAvails.forEach(avail => 
-                                        deleteMutation.mutate(avail.id)
-                                      );
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </Card>
+                            <p className="text-center text-muted-foreground py-8">
+                              Nenhuma disponibilidade cadastrada para este mês
+                            </p>
                           );
-                        })}
+                        }
+                        
+                        return (
+                          <>
+                            {paginatedDates.map((dateStr) => {
+                              const dateAvails = viewingAvailabilities.filter(a => a.availability_date === dateStr);
+                              const date = new Date(dateStr + 'T00:00:00');
+                              const dayOfWeekKey = format(date, "EEEE", { locale: ptBR });
+                              const formattedDate = format(date, "dd/MM/yyyy", { locale: ptBR });
+                              const withProcedure = dateAvails.find(a => a.procedure_id);
+                              const withoutProcedure = dateAvails.find(a => !a.procedure_id);
+                              const isEditing = editingDate === dateStr;
+                              const [editStart, setEditStart] = useState(withoutProcedure?.start_time || "08:00");
+                              const [editEnd, setEditEnd] = useState(withoutProcedure?.end_time || "18:00");
+
+                              return (
+                                <Card key={dateStr} className="p-4">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                      <p className="font-medium capitalize">
+                                        {dayOfWeekKey} - {formattedDate}
+                                      </p>
+                                      {isEditing ? (
+                                        <div className="flex gap-2 mt-2">
+                                          <Input
+                                            type="time"
+                                            value={editStart}
+                                            onChange={(e) => setEditStart(e.target.value)}
+                                            className="w-32"
+                                          />
+                                          <span className="self-center">-</span>
+                                          <Input
+                                            type="time"
+                                            value={editEnd}
+                                            onChange={(e) => setEditEnd(e.target.value)}
+                                            className="w-32"
+                                          />
+                                          <Button
+                                            size="sm"
+                                            onClick={() => {
+                                              updateMutation.mutate({
+                                                dateStr,
+                                                startTime: editStart,
+                                                endTime: editEnd
+                                              });
+                                            }}
+                                          >
+                                            Salvar
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setEditingDate(null)}
+                                          >
+                                            Cancelar
+                                          </Button>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          {withoutProcedure && (
+                                            <p className="text-sm text-muted-foreground">
+                                              {withoutProcedure.start_time} - {withoutProcedure.end_time}
+                                            </p>
+                                          )}
+                                          {withProcedure && (
+                                            <p className="text-sm text-amber-600 font-medium">
+                                              Com procedimentos disponíveis
+                                            </p>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                    {!isEditing && (
+                                      <div className="flex gap-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => {
+                                            setEditingDate(dateStr);
+                                            setEditStart(withoutProcedure?.start_time || "08:00");
+                                            setEditEnd(withoutProcedure?.end_time || "18:00");
+                                          }}
+                                        >
+                                          <CalendarDays className="h-4 w-4 text-primary" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => {
+                                            dateAvails.forEach(avail => 
+                                              deleteMutation.mutate(avail.id)
+                                            );
+                                          }}
+                                        >
+                                          <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </Card>
+                              );
+                            })}
+                            
+                            {/* Paginação */}
+                            {totalPages > 1 && (
+                              <div className="flex items-center justify-center gap-2 mt-4">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                  disabled={currentPage === 1}
+                                >
+                                  Anterior
+                                </Button>
+                                <span className="text-sm">
+                                  Página {currentPage} de {totalPages}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                  disabled={currentPage === totalPages}
+                                >
+                                  Próxima
+                                </Button>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </>
                 ) : (
