@@ -124,6 +124,10 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
   });
   const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
   const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [editingValues, setEditingValues] = useState<{ startTime: string; endTime: string }>({
+    startTime: "08:00",
+    endTime: "18:00"
+  });
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -303,6 +307,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     setProcedureWeekDays([]);
     setSelectedProcedures([]);
     setEditingDate(null);
+    setEditingValues({ startTime: "08:00", endTime: "18:00" });
     setSelectedMonth(new Date());
     setCurrentPage(1);
     setWeekSchedule({
@@ -861,8 +866,6 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                               const withProcedure = dateAvails.find(a => a.procedure_id);
                               const withoutProcedure = dateAvails.find(a => !a.procedure_id);
                               const isEditing = editingDate === dateStr;
-                              const [editStart, setEditStart] = useState(withoutProcedure?.start_time || "08:00");
-                              const [editEnd, setEditEnd] = useState(withoutProcedure?.end_time || "18:00");
 
                               return (
                                 <Card key={dateStr} className="p-4">
@@ -875,15 +878,15 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                                         <div className="flex gap-2 mt-2">
                                           <Input
                                             type="time"
-                                            value={editStart}
-                                            onChange={(e) => setEditStart(e.target.value)}
+                                            value={editingValues.startTime}
+                                            onChange={(e) => setEditingValues(prev => ({ ...prev, startTime: e.target.value }))}
                                             className="w-32"
                                           />
                                           <span className="self-center">-</span>
                                           <Input
                                             type="time"
-                                            value={editEnd}
-                                            onChange={(e) => setEditEnd(e.target.value)}
+                                            value={editingValues.endTime}
+                                            onChange={(e) => setEditingValues(prev => ({ ...prev, endTime: e.target.value }))}
                                             className="w-32"
                                           />
                                           <Button
@@ -891,8 +894,8 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                                             onClick={() => {
                                               updateMutation.mutate({
                                                 dateStr,
-                                                startTime: editStart,
-                                                endTime: editEnd
+                                                startTime: editingValues.startTime,
+                                                endTime: editingValues.endTime
                                               });
                                             }}
                                           >
@@ -928,8 +931,10 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                                           size="icon"
                                           onClick={() => {
                                             setEditingDate(dateStr);
-                                            setEditStart(withoutProcedure?.start_time || "08:00");
-                                            setEditEnd(withoutProcedure?.end_time || "18:00");
+                                            setEditingValues({
+                                              startTime: withoutProcedure?.start_time || "08:00",
+                                              endTime: withoutProcedure?.end_time || "18:00"
+                                            });
                                           }}
                                         >
                                           <CalendarDays className="h-4 w-4 text-primary" />
