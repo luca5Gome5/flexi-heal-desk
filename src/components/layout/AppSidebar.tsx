@@ -7,8 +7,7 @@ import {
   Stethoscope,
   Syringe,
   Image,
-  MessageSquare,
-  Shield
+  MessageSquare
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,7 +30,6 @@ const menuItems = [
   { title: "Procedimentos", url: "/procedures", icon: Syringe },
   { title: "Mídias", url: "/media", icon: Image },
   { title: "Mensagens", url: "/messages", icon: MessageSquare },
-  { title: "Usuários", url: "/users", icon: Shield },
 ];
 
 export function AppSidebar() {
