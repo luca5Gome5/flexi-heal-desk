@@ -582,6 +582,7 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           duration_unit: string | null
+          exam_requirements: Json | null
           id: string
           max_installments: number | null
           name: string
@@ -597,6 +598,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           duration_unit?: string | null
+          exam_requirements?: Json | null
           id?: string
           max_installments?: number | null
           name: string
@@ -612,6 +614,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           duration_unit?: string | null
+          exam_requirements?: Json | null
           id?: string
           max_installments?: number | null
           name?: string

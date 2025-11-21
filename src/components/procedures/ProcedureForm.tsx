@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { X, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ExamRequirementsManager, ExamRequirement } from "./ExamRequirementsManager";
 
 interface ProcedureFormProps {
   open: boolean;
@@ -27,6 +26,7 @@ interface ProcedureFormProps {
     name: string;
     description: string | null;
     required_exams: string[] | null;
+    exam_requirements: ExamRequirement[] | null;
     duration_minutes: number | null;
     duration_unit: string | null;
     status: boolean | null;
@@ -47,8 +47,7 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
     duration_unit: "minutes",
     status: true,
   });
-  const [requiredExams, setRequiredExams] = useState<string[]>([]);
-  const [newExam, setNewExam] = useState("");
+  const [examRequirements, setExamRequirements] = useState<ExamRequirement[]>([]);
 
   // Update form data when procedure prop changes
   useEffect(() => {
@@ -60,7 +59,7 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         duration_unit: procedure.duration_unit || "minutes",
         status: procedure.status ?? true,
       });
-      setRequiredExams(procedure.required_exams || []);
+      setExamRequirements(procedure.exam_requirements || []);
     } else {
       setFormData({
         name: "",
@@ -69,20 +68,9 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         duration_unit: "minutes",
         status: true,
       });
-      setRequiredExams([]);
+      setExamRequirements([]);
     }
   }, [procedure, open]);
-
-  const handleAddExam = () => {
-    if (newExam.trim() && !requiredExams.includes(newExam.trim())) {
-      setRequiredExams([...requiredExams, newExam.trim()]);
-      setNewExam("");
-    }
-  };
-
-  const handleRemoveExam = (exam: string) => {
-    setRequiredExams(requiredExams.filter((e) => e !== exam));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +83,7 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
         duration_minutes: formData.duration_minutes,
         duration_unit: formData.duration_unit,
         status: formData.status,
-        required_exams: requiredExams.length > 0 ? requiredExams : null,
+        exam_requirements: examRequirements.length > 0 ? (examRequirements as any) : [],
       };
 
       if (procedure?.id) {
@@ -197,44 +185,10 @@ export function ProcedureForm({ open, onOpenChange, procedure }: ProcedureFormPr
             </div>
           </div>
 
-          <div className="space-y-3">
-            <Label>Exames Necessários</Label>
-            <div className="flex gap-2">
-              <Input
-                value={newExam}
-                onChange={(e) => setNewExam(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddExam())}
-                placeholder="Ex: Hemograma completo"
-                className="rounded-lg border-border focus-visible:ring-accent"
-              />
-              <Button
-                type="button"
-                onClick={handleAddExam}
-                variant="outline"
-                size="icon"
-                className="border-accent text-accent hover:bg-accent/10"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {requiredExams.length > 0 && (
-              <div className="flex flex-wrap gap-2 p-3 rounded-lg bg-secondary/30">
-                {requiredExams.map((exam) => (
-                  <Badge
-                    key={exam}
-                    variant="secondary"
-                    className="gap-1 bg-accent/10 text-accent hover:bg-accent/20"
-                  >
-                    {exam}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() => handleRemoveExam(exam)}
-                    />
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
+          <ExamRequirementsManager
+            requirements={examRequirements}
+            onChange={setExamRequirements}
+          />
 
           <div className="flex items-center space-x-2">
             <Switch
