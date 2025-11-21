@@ -7,7 +7,8 @@ import {
   Stethoscope,
   Syringe,
   Image,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,6 +29,7 @@ const menuItems = [
   { title: "Unidades", url: "/units", icon: Building2 },
   { title: "Médicos", url: "/doctors", icon: Stethoscope },
   { title: "Procedimentos", url: "/procedures", icon: Syringe },
+  { title: "PDF de Exames", url: "/exam-pdf", icon: FileText },
   { title: "Mídias", url: "/media", icon: Image },
   { title: "Mensagens", url: "/messages", icon: MessageSquare },
 ];
