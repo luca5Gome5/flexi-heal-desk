@@ -161,21 +161,45 @@ export default function Procedures() {
                       </span>
                     </div>
 
-                    {procedure.required_exams && procedure.required_exams.length > 0 && (
+                    {procedure.exam_requirements && Array.isArray(procedure.exam_requirements) && procedure.exam_requirements.length > 0 && (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                           <FileText className="h-4 w-4" />
-                          <span>Exames Necessários:</span>
+                          <span>Requisitos de Exames:</span>
                         </div>
-                        <div className="flex flex-wrap gap-1 pl-6">
-                          {procedure.required_exams.map((exam: string) => (
-                            <Badge
-                              key={exam}
-                              variant="secondary"
-                              className="text-xs bg-secondary/50"
-                            >
-                              {exam}
-                            </Badge>
+                        <div className="space-y-2 pl-6">
+                          {(procedure.exam_requirements as any[]).map((req: any, idx: number) => (
+                            <div key={idx} className="space-y-1">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Badge variant="secondary" className="text-xs">
+                                  {req.gender === "all" && "Todos"}
+                                  {req.gender === "male" && "Masculino"}
+                                  {req.gender === "female" && "Feminino"}
+                                  {req.gender === "other" && "Outros"}
+                                </Badge>
+                                {(req.age_min || req.age_max) && (
+                                  <span className="text-xs">
+                                    {req.age_min || 0} - {req.age_max || "∞"} anos
+                                  </span>
+                                )}
+                                {req.conditions && req.conditions.length > 0 && (
+                                  <span className="text-xs italic">
+                                    ({req.conditions.join(", ")})
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {req.exams?.map((exam: string) => (
+                                  <Badge
+                                    key={exam}
+                                    variant="outline"
+                                    className="text-xs"
+                                  >
+                                    {exam}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </div>
