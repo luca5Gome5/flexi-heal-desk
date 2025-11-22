@@ -88,15 +88,24 @@ Deno.serve(async (req) => {
 
     console.log('Buscando paciente com CPF:', cpf);
 
-    // Buscar paciente pelo CPF
-    const { data: patient, error: patientError } = await supabase
+    // Buscar paciente pelo CPF (remove formatação para comparação)
+    const { data: patients, error: patientError } = await supabase
       .from('patients')
-      .select('*')
-      .eq('cpf', cpf)
-      .single();
+      .select('*');
 
-    if (patientError || !patient) {
-      console.error('Erro ao buscar paciente:', patientError);
+    if (patientError) {
+      console.error('Erro ao buscar pacientes:', patientError);
+      return new Response(
+        JSON.stringify({ error: 'Erro ao buscar pacientes' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Encontrar paciente comparando CPF sem formatação
+    const patient = patients?.find(p => p.cpf?.replace(/\D/g, '') === cpf);
+
+    if (!patient) {
+      console.error('Paciente não encontrado com CPF:', cpf);
       return new Response(
         JSON.stringify({ error: 'Paciente não encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
