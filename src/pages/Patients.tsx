@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PatientForm } from "@/components/patients/PatientForm";
-import { Plus, Search, Phone, Mail, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Phone, Mail, Pencil, Trash2, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Patients() {
@@ -78,6 +78,34 @@ export default function Patients() {
   const handleViewDialogClose = () => {
     setIsViewDialogOpen(false);
     setSelectedPatient(null);
+  };
+
+  const handleCopyData = (patient: any) => {
+    const data = [
+      `Nome: ${patient.name}`,
+      patient.cpf && `CPF: ${patient.cpf}`,
+      patient.rg && `RG: ${patient.rg}`,
+      patient.birth_date && `Data de Nascimento: ${new Date(patient.birth_date).toLocaleDateString('pt-BR')}`,
+      patient.email && `E-mail: ${patient.email}`,
+      patient.phone && `Telefone: ${patient.phone}`,
+      patient.address && `Endereço: ${patient.address}`,
+      patient.address_number && `Número: ${patient.address_number}`,
+      patient.neighborhood && `Bairro: ${patient.neighborhood}`,
+      patient.city && `Cidade: ${patient.city}`,
+      patient.state && `Estado: ${patient.state}`,
+      patient.zip_code && `CEP: ${patient.zip_code}`,
+      patient.marital_status && `Estado Civil: ${patient.marital_status.replace('_', ' ')}`,
+      patient.occupation && `Profissão: ${patient.occupation}`,
+      patient.insurance && `Convênio: ${patient.insurance}`,
+      patient.consultation_reason && `Motivo da Consulta: ${patient.consultation_reason}`,
+      patient.notes && `Observações: ${patient.notes}`,
+    ].filter(Boolean).join('\n');
+
+    navigator.clipboard.writeText(data).then(() => {
+      toast.success("Dados copiados para a área de transferência!");
+    }).catch(() => {
+      toast.error("Erro ao copiar dados");
+    });
   };
 
   return (
@@ -321,6 +349,14 @@ export default function Patients() {
               )}
 
               <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => handleCopyData(selectedPatient)}
+                  className="border-primary text-primary hover:bg-primary/10"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar Dados
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => {

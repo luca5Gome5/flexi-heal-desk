@@ -25,6 +25,7 @@ export type Database = {
           is_procedure: boolean | null
           notes: string | null
           patient_id: string | null
+          phone: string | null
           procedure_id: string | null
           start_time: string
           status: Database["public"]["Enums"]["appointment_status"] | null
@@ -41,6 +42,7 @@ export type Database = {
           is_procedure?: boolean | null
           notes?: string | null
           patient_id?: string | null
+          phone?: string | null
           procedure_id?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["appointment_status"] | null
@@ -57,6 +59,7 @@ export type Database = {
           is_procedure?: boolean | null
           notes?: string | null
           patient_id?: string | null
+          phone?: string | null
           procedure_id?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["appointment_status"] | null
