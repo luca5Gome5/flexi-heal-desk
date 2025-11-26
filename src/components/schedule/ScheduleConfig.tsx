@@ -131,6 +131,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [dateSpecificSchedules, setDateSpecificSchedules] = useState<Record<string, TimeSlot>>({});
   
   const queryClient = useQueryClient();
 
@@ -203,8 +204,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
       // Para cada data de atendimento, criar registros na tabela availabilities
       const promises = attendanceDates.flatMap((date) => {
         const dateString = format(date, "yyyy-MM-dd");
-        const dayOfWeekKey = format(date, "EEEE", { locale: ptBR }).toLowerCase() as DayOfWeek;
-        const timeSlot = weekSchedule[dayOfWeekKey];
+        const timeSlot = dateSpecificSchedules[dateString] || { startTime: "08:00", endTime: "18:00" };
         const isProcedureDay = procedureDateStrings.has(dateString);
         
         const insertPromises = [];
@@ -310,6 +310,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     setEditingValues({ startTime: "08:00", endTime: "18:00" });
     setSelectedMonth(new Date());
     setCurrentPage(1);
+    setDateSpecificSchedules({});
     setWeekSchedule({
       "segunda-feira": { startTime: "08:00", endTime: "18:00" },
       "terça-feira": { startTime: "08:00", endTime: "18:00" },
@@ -444,10 +445,30 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
     }));
   };
 
+  const updateDateSpecificTime = (dateString: string, field: "startTime" | "endTime", value: string) => {
+    setDateSpecificSchedules((prev) => ({
+      ...prev,
+      [dateString]: {
+        ...prev[dateString],
+        [field]: value,
+      },
+    }));
+  };
+
+  const initializeDateSpecificSchedules = () => {
+    const schedules: Record<string, TimeSlot> = {};
+    attendanceDates.forEach(date => {
+      const dateString = format(date, "yyyy-MM-dd");
+      schedules[dateString] = { startTime: "08:00", endTime: "18:00" };
+    });
+    setDateSpecificSchedules(schedules);
+  };
+
   const canProceedToNextStep = () => {
     if (currentStep === 1) return selectedUnit !== "";
     if (currentStep === 2) return attendanceDates.length > 0;
     if (currentStep === 3) return true;
+    if (currentStep === 4) return true;
     return false;
   };
 
@@ -470,7 +491,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
           <TabsContent value="config" className="space-y-6">
             {/* Progress Indicator */}
             <div className="flex items-center justify-between mb-6">
-              {[1, 2, 3, 4].map((step) => (
+              {[1, 2, 3, 4, 5].map((step) => (
                 <div key={step} className="flex items-center flex-1">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
@@ -481,7 +502,7 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                   >
                     {step}
                   </div>
-                  {step < 4 && (
+                  {step < 5 && (
                     <div
                       className={`flex-1 h-1 mx-2 ${
                         currentStep > step ? "bg-[hsl(var(--accent))]" : "bg-muted"
@@ -569,7 +590,10 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
               {/* Step 3: Configurar Horários por Dia da Semana */}
               {currentStep === 3 && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold mb-4">Passo 3: Configure os Horários por Dia da Semana</h3>
+                  <h3 className="text-lg font-semibold mb-4">Passo 3: Configure os Horários Padrão (Opcional)</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Estes horários são apenas referência. Na etapa final, você poderá ajustar os horários individualmente para cada data.
+                  </p>
                   <div className="space-y-3">
                     {daysOfWeek.map((day) => (
                       <Card key={day} className="p-4">
@@ -685,6 +709,79 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                   </div>
                 </div>
               )}
+
+              {/* Step 5: Revisar e Editar Horários de Cada Dia */}
+              {currentStep === 5 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold mb-4">Passo 5: Revisar e Ajustar Horários</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Revise os horários para cada data. Por padrão, todos os dias estão configurados das 08:00 às 18:00, mas você pode ajustar individualmente.
+                  </p>
+                  
+                  <div className="max-h-[500px] overflow-y-auto space-y-2 pr-2">
+                    {attendanceDates
+                      .sort((a, b) => a.getTime() - b.getTime())
+                      .map((date) => {
+                        const dateString = format(date, "yyyy-MM-dd");
+                        const schedule = dateSpecificSchedules[dateString] || { startTime: "08:00", endTime: "18:00" };
+                        const isProcedureDay = procedureDates.some(pDate => format(pDate, "yyyy-MM-dd") === dateString);
+                        
+                        return (
+                          <Card key={dateString} className={`p-3 ${isProcedureDay ? 'border-[hsl(var(--accent))] border-2' : ''}`}>
+                            <div className="grid grid-cols-4 gap-3 items-center">
+                              <div>
+                                <p className="font-medium">{format(date, "dd/MM/yyyy")}</p>
+                                <p className="text-xs text-muted-foreground capitalize">
+                                  {format(date, "EEEE", { locale: ptBR })}
+                                  {isProcedureDay && (
+                                    <span className="ml-2 text-[hsl(var(--accent))] font-semibold">• Procedimento</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Início</Label>
+                                <Input
+                                  type="time"
+                                  value={schedule.startTime}
+                                  onChange={(e) => updateDateSpecificTime(dateString, "startTime", e.target.value)}
+                                  className="h-9"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Término</Label>
+                                <Input
+                                  type="time"
+                                  value={schedule.endTime}
+                                  onChange={(e) => updateDateSpecificTime(dateString, "endTime", e.target.value)}
+                                  className="h-9"
+                                />
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {(() => {
+                                  const [startHour, startMin] = schedule.startTime.split(':').map(Number);
+                                  const [endHour, endMin] = schedule.endTime.split(':').map(Number);
+                                  const totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+                                  const hours = Math.floor(totalMinutes / 60);
+                                  const mins = totalMinutes % 60;
+                                  return `${hours}h${mins > 0 ? ` ${mins}min` : ''}`;
+                                })()}
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                  </div>
+                  
+                  <div className="bg-accent/5 p-4 rounded-lg border">
+                    <p className="text-sm font-medium mb-2">Resumo da Configuração:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• {attendanceDates.length} dias de atendimento</li>
+                      <li>• {procedureDates.length} dias com procedimentos</li>
+                      <li>• Unidade: {units?.find(u => u.id === selectedUnit)?.name}</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Navigation Buttons */}
@@ -698,9 +795,15 @@ export const ScheduleConfig = ({ open, onOpenChange }: ScheduleConfigProps) => {
                 Voltar
               </Button>
 
-              {currentStep < 4 ? (
+              {currentStep < 5 ? (
                 <Button
-                  onClick={() => setCurrentStep((prev) => prev + 1)}
+                  onClick={() => {
+                    if (currentStep === 4) {
+                      // Inicializar horários específicos antes de ir para o Step 5
+                      initializeDateSpecificSchedules();
+                    }
+                    setCurrentStep((prev) => prev + 1);
+                  }}
                   disabled={!canProceedToNextStep()}
                   className="bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90"
                 >
